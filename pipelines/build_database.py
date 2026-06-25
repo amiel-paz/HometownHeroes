@@ -23,10 +23,15 @@ MLB_DB = SCRATCH / "mlb_enrichment.sqlite"
 NFL_DB = SCRATCH / "nfl_enrichment.sqlite"
 WIKIDATA_DB = SCRATCH / "wikidata_education_enrichment.sqlite"
 WIKIDATA_BIRTHPLACE_DB = SCRATCH / "wikidata_birthplace_enrichment.sqlite"
+NFL_STADIUM_DB = SCRATCH / "nfl_stadium_enrichment.sqlite"
 
 
 def sql_quote(value: str) -> str:
     return "'" + value.replace("'", "''") + "'"
+
+
+def repo_path(path: Path) -> str:
+    return path.resolve().relative_to(ROOT).as_posix()
 
 
 def stable_id(*parts: object) -> str:
@@ -35,7 +40,7 @@ def stable_id(*parts: object) -> str:
 
 
 def require_inputs() -> None:
-    missing = [str(path) for path in (MLB_DB, NFL_DB, WIKIDATA_DB) if not path.exists()]
+    missing = [repo_path(path) for path in (MLB_DB, NFL_DB, WIKIDATA_DB) if not path.exists()]
     if missing:
         raise SystemExit("Missing required cache DBs: " + ", ".join(missing))
 
@@ -51,6 +56,7 @@ def create_schema(con: sqlite3.Connection) -> None:
         drop table if exists source_snapshots;
         drop view if exists geocoded_player_location_events;
         drop view if exists player_event_summary;
+        drop view if exists pro_career_summary;
         drop view if exists sf_50mi_non_pro_player_pool;
 
         create table players (
@@ -117,6 +123,8 @@ def attach_sources(con: sqlite3.Connection) -> None:
     con.execute(f"attach database {sql_quote(str(WIKIDATA_DB))} as wd")
     if WIKIDATA_BIRTHPLACE_DB.exists():
         con.execute(f"attach database {sql_quote(str(WIKIDATA_BIRTHPLACE_DB))} as wb")
+    if NFL_STADIUM_DB.exists():
+        con.execute(f"attach database {sql_quote(str(NFL_STADIUM_DB))} as ns")
 
 
 def load_players(con: sqlite3.Connection) -> None:
@@ -145,10 +153,10 @@ def load_players(con: sqlite3.Connection) -> None:
             display_name,
             nullif(birth_date, ''),
             cast(substr(nullif(birth_date, ''), 1, 4) as integer),
-            cast(nullif(rookie_season, '') as integer),
-            cast(nullif(last_season, '') as integer),
+            null,
+            null,
             pfr_id,
-            'nflverse players'
+            'nflverse players profile; canonical pro years not loaded'
         from nfl.nfl_players
         where coalesce(nullif(gsis_id, ''), nullif(pfr_id, '')) is not null;
         """
@@ -276,6 +284,28 @@ def load_locations(con: sqlite3.Connection) -> None:
             where birthplace_qid is not null and birthplace_qid != '';
             """
         )
+    if NFL_STADIUM_DB.exists():
+        con.executescript(
+            """
+            insert or replace into locations
+            (location_id, location_kind, label, city, state, country, latitude, longitude, geocode_status, geocode_source, source, source_key)
+            select
+                stable_id('NFL', 'pro_stadium', stadium_id, stadium_name),
+                'pro_stadium',
+                stadium_name,
+                nullif(city, ''),
+                null,
+                nullif(country, ''),
+                latitude,
+                longitude,
+                match_status,
+                geocode_source,
+                'nflverse schedules + Wikidata stadium geocode',
+                stadium_id || '|' || stadium_name
+            from ns.nfl_stadium_geocode_cache
+            where latitude is not null and longitude is not null;
+            """
+        )
 
 
 def load_events(con: sqlite3.Connection) -> None:
@@ -341,13 +371,13 @@ def load_events(con: sqlite3.Connection) -> None:
             coalesce(nullif(gsis_id, ''), pfr_id),
             'attended_college',
             stable_id('NFL', 'college', college_name),
-            cast(nullif(rookie_season, '') as integer) - 4,
-            cast(nullif(rookie_season, '') as integer) - 1,
+            null,
+            null,
             null,
             'nflverse players college_name + College Scorecard',
             college_name,
-            'inferred_years',
-            'Years inferred from rookie season; college attendance/participation dates are not in nflverse players.'
+            'source_reported',
+            'College association only; attendance/participation dates are not in nflverse players.'
         from nfl.nfl_players
         where college_name is not null and college_name != ''
           and coalesce(nullif(gsis_id, ''), nullif(pfr_id, '')) is not null;
@@ -420,6 +450,28 @@ def load_events(con: sqlite3.Connection) -> None:
               );
             """
         )
+    if NFL_STADIUM_DB.exists():
+        con.executescript(
+            """
+            insert or replace into player_location_events
+            (event_id, sport, player_id, event_type, location_id, start_year, end_year, duration_years, source, source_key, confidence, notes)
+            select
+                stable_id('NFL', e.player_id, 'played_pro', e.team, e.stadium_id, e.stadium_name),
+                'NFL',
+                e.player_id,
+                'played_pro',
+                stable_id('NFL', 'pro_stadium', e.stadium_id, e.stadium_name),
+                e.start_year,
+                e.end_year,
+                e.seasons,
+                e.source,
+                e.team || '|' || e.stadium_id || '|' || e.season_list,
+                'roster_home_stadium_inferred',
+                'Roster-season association joined to the team season home stadium inferred from nflverse schedules; this is not a game appearance log.'
+            from ns.nfl_pro_stadium_events e
+            join players p on p.sport = 'NFL' and p.player_id = e.player_id;
+            """
+        )
 
 
 def create_indexes_and_views(con: sqlite3.Connection) -> None:
@@ -473,6 +525,23 @@ def create_indexes_and_views(con: sqlite3.Connection) -> None:
           on p.sport = e.sport and p.player_id = e.player_id
         group by p.sport, p.player_id, p.display_name;
 
+        create view pro_career_summary as
+        select
+            p.sport,
+            p.player_id,
+            p.display_name,
+            min(e.start_year) as pro_start_year,
+            max(e.end_year) as pro_end_year,
+            sum(e.duration_years) as pro_location_seasons,
+            group_concat(distinct e.source) as sources
+        from players p
+        join player_location_events e
+          on p.sport = e.sport and p.player_id = e.player_id
+        where e.event_type = 'played_pro'
+          and e.start_year is not null
+          and e.end_year is not null
+        group by p.sport, p.player_id, p.display_name;
+
         create view sf_50mi_non_pro_player_pool as
         with distances as (
             select
@@ -497,23 +566,26 @@ def create_indexes_and_views(con: sqlite3.Connection) -> None:
 
 def add_sources(con: sqlite3.Connection) -> None:
     rows = [
-        ("mlb_enrichment", str(MLB_DB), "MLB Lahman/Chadwick/Scorecard/Census cache"),
-        ("nfl_enrichment", str(NFL_DB), "NFL nflverse/Scorecard cache"),
-        ("wikidata_education", str(WIKIDATA_DB), "Wikidata P69 education cache"),
+        ("mlb_enrichment", repo_path(MLB_DB), "MLB Lahman/Chadwick/Scorecard/Census cache"),
+        ("nfl_enrichment", repo_path(NFL_DB), "NFL nflverse/Scorecard cache"),
+        ("wikidata_education", repo_path(WIKIDATA_DB), "Wikidata P69 education cache"),
     ]
     if WIKIDATA_BIRTHPLACE_DB.exists():
-        rows.append(("wikidata_birthplace", str(WIKIDATA_BIRTHPLACE_DB), "Wikidata P19 birthplace cache"))
+        rows.append(("wikidata_birthplace", repo_path(WIKIDATA_BIRTHPLACE_DB), "Wikidata P19 birthplace cache"))
+    if NFL_STADIUM_DB.exists():
+        rows.append(("nfl_stadium_enrichment", repo_path(NFL_STADIUM_DB), "NFL schedule-derived home stadium geocode cache"))
     con.executemany("insert or replace into source_snapshots values (?, ?, ?)", rows)
 
 
 def write_summary(con: sqlite3.Connection) -> dict:
     summary = {
-        "sqlite_database": str(OUT_DB),
+        "sqlite_database": repo_path(OUT_DB),
         "players": dict(con.execute("select sport, count(*) from players group by sport").fetchall()),
         "locations": con.execute("select count(*) from locations").fetchone()[0],
         "locations_geocoded": con.execute("select count(*) from locations where latitude is not null and longitude is not null").fetchone()[0],
         "events": con.execute("select count(*) from player_location_events").fetchone()[0],
         "events_by_type": dict(con.execute("select event_type, count(*) from player_location_events group by event_type order by event_type").fetchall()),
+        "pro_career_summary_players": dict(con.execute("select sport, count(*) from pro_career_summary group by sport order by sport").fetchall()),
         "geocoded_events": con.execute("select count(*) from geocoded_player_location_events").fetchone()[0],
         "sf_50mi_non_pro_events": con.execute("select count(*) from sf_50mi_non_pro_player_pool").fetchone()[0],
         "sf_50mi_non_pro_players": con.execute("select count(distinct sport || ':' || player_id) from sf_50mi_non_pro_player_pool").fetchone()[0],

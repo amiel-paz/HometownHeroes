@@ -1,0 +1,2703 @@
+{
+  "head": {
+    "vars": [
+      "queryLabel",
+      "stadium",
+      "stadiumLabel",
+      "coord",
+      "locatedInLabel",
+      "countryLabel"
+    ]
+  },
+  "results": {
+    "bindings": [
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "AT&T Stadium"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q838284"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-97.09288 32.74769)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "AT&T Stadium"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Arlington"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Acrisure Stadium"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q1067148"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-80.015833333 40.446666666)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Acrisure Stadium"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Pittsburgh"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Adelphia Coliseum"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q1142992"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-86.771388888 36.166388888)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Nissan Stadium"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Nashville"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Allegiant Stadium"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q27768421"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-115.183 36.090777777)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Allegiant Stadium"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Clark County"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Alltel Stadium"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q635117"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-81.6375 30.323889)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "EverBank Field"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Jacksonville"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Arrowhead Stadium"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q544553"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-94.483888888 39.048888888)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Arrowhead Stadium"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Kansas City"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Bank of America Stadium"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q806673"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-80.852777777 35.225833333)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Bank of America Stadium"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Charlotte"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Caesars Superdome"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q756452"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-90.081111111 29.950833333)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Caesars Superdome"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "New Orleans"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Candlestick Park"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q1033076"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-122.386111111 37.713611111)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Candlestick Park"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "San Francisco"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Cinergy Field"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q153824"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-84.508333333 39.096666666)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Riverfront Stadium"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Cincinnati"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Cleveland Browns Stadium"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q1100756"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-81.699444444 41.506111111)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Huntington Bank Field"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Cleveland"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Cowboys Stadium"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q838284"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-97.09288 32.74769)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "AT&T Stadium"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Arlington"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Edward Jones Dome"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q1292739"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-90.188611111 38.632777777)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "The Dome at America's Center"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "St. Louis"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Empower Field at Mile High"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q1046135"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-105.02 39.743888888)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Empower Field at Mile High"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Denver"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Empower Field at Mile High"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q7579687"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-105.013198 39.743457)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Empower Field at Mile High"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Denver"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Ericsson Stadium"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q806673"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-80.852777777 35.225833333)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Bank of America Stadium"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Charlotte"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "EverBank Field"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q635117"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-81.6375 30.323889)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "EverBank Field"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Jacksonville"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "FedExField"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q583085"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-76.864444444 38.907777777)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Northwest Stadium"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Prince George's County"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "FirstEnergy Stadium"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q5452223"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-81.511181 41.074219)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "FirstEnergy Stadium"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Ohio"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "FirstEnergy Stadium"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q5452224"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-75.933611 40.365833)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "FirstEnergy Stadium"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Reading"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "FirstEnergy Stadium"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q1100756"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-81.699444444 41.506111111)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Huntington Bank Field"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Cleveland"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Ford Field"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q1142586"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-83.045555555 42.34)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Ford Field"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Detroit"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Foxboro Stadium"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q339850"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-71.267441666 42.0927)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Foxboro Stadium"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Foxborough"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "GEHA Field at Arrowhead Stadium"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q544553"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-94.483888888 39.048888888)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Arrowhead Stadium"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Kansas City"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Georgia Dome"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q1058931"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-84.400833333 33.7575)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Georgia Dome"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Atlanta"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Giants Stadium"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q375365"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-74.074433 40.813726)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Giants Stadium"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "East Rutherford"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Giants Stadium"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q5359559"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(151.067778 -33.843056)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Sydney Showground Stadium"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Sydney Olympic Park"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Australia"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Gillette Stadium"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q373355"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-71.264344444 42.090944444)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Gillette Stadium"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Foxborough"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Hard Rock Stadium"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q864339"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-80.238888888 25.958055555)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Hard Rock Stadium"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Miami Gardens"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Heinz Field"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q1067148"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-80.015833333 40.446666666)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Acrisure Stadium"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Pittsburgh"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Highmark Stadium"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q1475645"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-78.786944444 42.773611111)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Highmark Stadium"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Orchard Park"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Highmark Stadium"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q5759571"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-80.009444 40.436111)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Highmark Stadium"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Highmark Stadium"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q16251517"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-78.792194444 42.772972222)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Highmark Stadium"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Buffalo"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Hubert H. Humphrey Metrodome"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q1072186"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-93.258055555 44.973888888)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Hubert H. Humphrey Metrodome"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Minneapolis"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Huntington Bank Field"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q1100756"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-81.699444444 41.506111111)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Huntington Bank Field"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Cleveland"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Husky Stadium"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q1136463"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-122.301666666 47.650277777)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Husky Stadium"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Seattle"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Husky Stadium"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q5949402"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-94.1508 45.5477)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Husky Stadium"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "St. Cloud"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Husky Stadium"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q17015184"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-95.5114 29.6925)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Husky Stadium"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Houston"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Jack Kent Cooke Stadium"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q583085"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-76.864444444 38.907777777)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Northwest Stadium"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Prince George's County"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Jacksonville Municipal Stadium"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q635117"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-81.6375 30.323889)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "EverBank Field"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Jacksonville"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "LP Field"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q1142992"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-86.771388888 36.166388888)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Nissan Stadium"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Nashville"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Lambeau Field"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q860790"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-88.062222222 44.501388888)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Lambeau Field"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Green Bay"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Levi's Stadium"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q7419343"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-121.97 37.4034)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Levi's Stadium"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Santa Clara"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Lincoln Financial Field"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q1052370"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-75.16776 39.90089)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Lincoln Financial Field"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Philadelphia"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Lincoln Financial Field"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q116718467"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-75.1675 39.900833)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Lincoln Financial Field"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Philadelphia County"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Los Angeles Memorial Coliseum"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q849784"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-118.287778 34.014167)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Los Angeles Memorial Coliseum"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Los Angeles"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Lucas Oil Stadium"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q867160"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-86.163806 39.760056)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Lucas Oil Stadium"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Indianapolis"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Lumen Field"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q612736"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-122.331666666 47.595277777)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Lumen Field"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Seattle"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "M&T Bank Stadium"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q1141336"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-76.622777777 39.278055555)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "M&T Bank Stadium"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Baltimore"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "McAfee Coliseum"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q1147732"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-122.200555555 37.751666666)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Oakland Coliseum"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Oakland"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Mercedes-Benz Stadium"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q7007552"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-84.400833333 33.755277777)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Mercedes-Benz Stadium"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Atlanta"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Mercedes-Benz Superdome"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q756452"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-90.081111111 29.950833333)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Caesars Superdome"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "New Orleans"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "MetLife Stadium"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q10862290"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-74.074444444 40.813611111)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "MetLife Stadium"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "East Rutherford"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Mile High Stadium"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q1934586"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-105.021666666 39.746111111)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Mile High Stadium"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Denver"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Network Associates Coliseum"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q1147732"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-122.200555555 37.751666666)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Oakland Coliseum"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Oakland"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Nissan Stadium"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q116601"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(139.606247 35.510044)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "International Stadium Yokohama"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Kozukuech\u014d"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Japan"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Nissan Stadium"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q1142992"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-86.771388888 36.166388888)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Nissan Stadium"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Nashville"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Northwest Stadium"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q583085"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-76.864444444 38.907777777)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Northwest Stadium"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Prince George's County"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "O.co Coliseum"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q1147732"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-122.200555555 37.751666666)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Oakland Coliseum"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Oakland"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Oakland Coliseum"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q1147732"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-122.200555555 37.751666666)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Oakland Coliseum"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Oakland"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "PSINet Stadium"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q1141336"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-76.622777777 39.278055555)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "M&T Bank Stadium"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Baltimore"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Paycor Stadium"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q1632294"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-84.516038888 39.095444444)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Paycor Stadium"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Cincinnati"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Pontiac Silverdome"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q211662"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-83.255 42.645833333)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Pontiac Silverdome"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Pontiac"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Qwest Field"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q49547383"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-122.332777777 47.595)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Qwest Field"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "King County"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "RCA Dome"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q2092780"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-86.163319444 39.763658333)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "RCA Dome"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Indianapolis"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Ravens Stadium"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q1141336"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-76.622777777 39.278055555)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "M&T Bank Stadium"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Baltimore"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Raymond James Stadium"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q1141343"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-82.503333333 27.975833333)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Raymond James Stadium"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Tampa"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "San Diego Stadium"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q956072"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-117.119444444 32.783055555)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "San Diego Stadium"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "San Diego"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "SoFi Stadium"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q19520501"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-118.338 33.9504)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "SoFi Stadium"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Inglewood"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Soldier Field"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q1132413"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-87.616666666 41.8625)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Soldier Field"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Chicago"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Soldier Field"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q86750507"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-75.5444675 39.1861413)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Soldier Field"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Dover"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "State Farm Stadium"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q756433"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-112.2625 33.5275)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "State Farm Stadium"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Glendale"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "StubHub Center"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q200684"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-118.261111111 33.864444444)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Dignity Health Sports Park"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Carson"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Sun Devil Stadium"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q14680769"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-111.936 33.426)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Veterans Way/College Avenue"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Tempe"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "TCF Bank Stadium"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q3512039"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-93.224444 44.976389)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Huntington Bank Stadium"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Minneapolis"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "TIAA Bank Stadium"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q635117"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-81.6375 30.323889)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "EverBank Field"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Jacksonville"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Texas Stadium"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q601596"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-96.910911111 32.839769444)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Texas Stadium"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Texas"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "The Coliseum"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q670890"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-112.096667 33.469444)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Arizona Veterans Memorial Coliseum"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Phoenix"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "The Coliseum"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q31548552"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-4.258952777 55.85095)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Coliseum, Glasgow"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Glasgow City"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United Kingdom"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "The Coliseum"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q929109"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-3.714722 40.325556)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Estadio Coliseum"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Getafe"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Spain"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "The Coliseum"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q1142992"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-86.771388888 36.166388888)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Nissan Stadium"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Nashville"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "The Coliseum"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q7557408"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-87.573333 37.974167)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Soldiers and Sailors Memorial Coliseum"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Evansville"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "The Coliseum"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q126391728"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-85.1039 33.5761)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "The Coliseum"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Three Rivers Stadium"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q1189339"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-80.012777777 40.446666666)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Three Rivers Stadium"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Pittsburgh"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "U.S. Bank Stadium"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q7929512"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-93.258056 44.973889)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "U.S. Bank Stadium"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Minneapolis"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Veterans Stadium"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q1115773"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-72.7727 41.6484)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Veterans Stadium"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Connecticut"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "queryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Veterans Stadium"
+        },
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q1545870"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-75.171111111 39.906666666)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Veterans Stadium"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Philadelphia"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      }
+    ]
+  }
+}

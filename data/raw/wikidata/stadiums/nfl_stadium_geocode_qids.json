@@ -1,0 +1,326 @@
+{
+  "head": {
+    "vars": [
+      "stadium",
+      "stadiumLabel",
+      "coord",
+      "locatedInLabel",
+      "countryLabel"
+    ]
+  },
+  "results": {
+    "bindings": [
+      {
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q1058864"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-95.410833333 29.684722222)"
+        },
+        "stadiumLabel": {
+          "type": "literal",
+          "value": "Q1058864"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Houston"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q1033076"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-122.386111111 37.713611111)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Candlestick Park"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "San Francisco"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q635117"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-81.6375 30.323889)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "EverBank Field"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Jacksonville"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q3305514"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-88.235833333 40.099166666)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Gies Memorial Stadium"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Illinois"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q864339"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-80.238888888 25.958055555)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Hard Rock Stadium"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Miami Gardens"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q1072186"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-93.258055555 44.973888888)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Hubert H. Humphrey Metrodome"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Minneapolis"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q990430"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-122.333055555 47.595555555)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Kingdome"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Seattle"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q612736"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-122.331666666 47.595277777)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Lumen Field"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Seattle"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q10862290"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-74.074444444 40.813611111)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "MetLife Stadium"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "East Rutherford"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q1147732"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-122.200555555 37.751666666)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Oakland Coliseum"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Oakland"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q1292739"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-90.188611111 38.632777777)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "The Dome at America's Center"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "St. Louis"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      },
+      {
+        "stadium": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q1594708"
+        },
+        "coord": {
+          "datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+          "type": "literal",
+          "value": "Point(-91.185556 30.411944)"
+        },
+        "stadiumLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Tiger Stadium"
+        },
+        "locatedInLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "Baton Rouge"
+        },
+        "countryLabel": {
+          "xml:lang": "en",
+          "type": "literal",
+          "value": "United States"
+        }
+      }
+    ]
+  }
+}

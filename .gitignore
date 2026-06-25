@@ -11,6 +11,7 @@ venv/
 __pycache__/
 *.py[cod]
 .pytest_cache/
+*.egg-info/
 
 # Local SQLite/DuckDB working databases generated from raw snapshots.
 *.sqlite

@@ -18,6 +18,8 @@ Acquired on 2026-06-24.
 - nflverse player master parquet: https://github.com/nflverse/nflverse-data/releases/download/players/players.parquet
 - nflverse seasonal rosters: https://github.com/nflverse/nflverse-data/releases/download/rosters/roster_{season}.csv
 - nflverse team metadata: https://github.com/nflverse/nflverse-data/releases/download/teams/teams_colors_logos.csv
+- nflverse / Lee Sharpe schedules: https://raw.githubusercontent.com/nflverse/nfldata/master/data/games.csv
+  - Used for schedule-derived team-season home stadiums from 1999 onward.
 
 ## Education / School Geocoding
 
@@ -32,6 +34,9 @@ Acquired on 2026-06-24.
   - Wikidata structured data is published under CC0.
 - Wikidata SPARQL birthplace responses: data/raw/wikidata/birthplace/
   - Cached responses for `P19` place-of-birth associations.
+  - Wikidata structured data is published under CC0.
+- Wikidata SPARQL stadium responses: data/raw/wikidata/stadiums/
+  - Cached responses for stadium coordinates (`P625`) used by schedule-derived NFL home venues.
   - Wikidata structured data is published under CC0.
 
 ## Notes
@@ -59,3 +64,4 @@ Acquired on 2026-06-24.
   - `roster_1999.csv` through `roster_2025.csv`: 27 seasonal roster files.
   - NFL roster files total 66,507 lines including headers.
   - `teams_colors_logos.csv`: 37 lines including header.
+  - `games.csv`: schedule rows with `stadium_id` and `stadium` fields for 1999 onward.
