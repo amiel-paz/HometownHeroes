@@ -1,0 +1,25 @@
+# Local exploratory code and notebooks.
+scratch/
+.scratch/
+tmp/
+.tmp/
+*.ipynb
+
+# Local Python environments and caches.
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Local SQLite/DuckDB working databases generated from raw snapshots.
+*.sqlite
+*.sqlite3
+*.db
+*.duckdb
+*.duckdb.wal
+
+# OS/editor noise.
+.DS_Store
+.idea/
+.vscode/

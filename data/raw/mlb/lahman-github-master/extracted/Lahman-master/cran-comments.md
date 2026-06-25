@@ -1,0 +1,39 @@
+## Test environments
+- local Windows 11 x64 install, R version 4.5.2
+- local Ubuntu 24.04, R version 4.5.2
+- win-builder, R version 4.5.2
+- macOS (mac.r-project.org), R version 4.5.2
+
+## R CMD check results
+There were no ERRORs or WARNINGs or NOTEs on win-builder (development or release)
+
+The local Windows check gave 1 NOTE; this is expected because Lahman is a large annually released data package:  
+
+>  checking installed package size ... INFO
+>     installed size is  7.0Mb
+>     sub-directories of 1Mb or more:
+>       data   6.0Mb
+
+All data files were compressed using the maximum known compression `tools::resaveRdaFiles(outdir, compress="xz", compression_level=9)`
+
+Added `LazyDataCompression: xz` to the DESCRIPTION file, which should prevent this on CRAN
+
+## Reverse dependencies
+
+Lahman has reverse dependencies of the following packages:
+
+> devtools::revdep("Lahman")
+ [1] "broom"     "dados"     "datos"     "dbplyr"     "dplyr"     implyr"     "mdsr"     "pinnacle.data"     "raw"          
+[10] "sparklyr"  "teamcolors" 
+
+## revdepcheck results
+
+We checked 12 reverse dependencies, comparing R CMD check results across CRAN and dev versions of this package.
+
+ * We saw 0 new problems
+ * We failed to check 0 packages
+
+
+## Comments
+This is an annual release, updating the data tables to the 2025 baseball season.
+
