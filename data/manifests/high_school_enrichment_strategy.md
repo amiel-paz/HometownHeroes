@@ -1,6 +1,6 @@
 # High School Enrichment Strategy
 
-This is an engineering/data-governance plan, not legal advice.
+This document outlines the data-governance approach for high school enrichment.
 
 ## Goal
 

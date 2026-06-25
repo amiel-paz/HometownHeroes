@@ -25,6 +25,15 @@ Acquired on 2026-06-24.
   - Public school location snapshot used to canonicalize and geocode U.S. public high schools.
   - Data.gov metadata for this layer states the file is in the public domain.
 
+## Wikidata
+
+- Wikidata SPARQL education responses: data/raw/wikidata/education/
+  - Cached responses for `P69` education associations.
+  - Wikidata structured data is published under CC0.
+- Wikidata SPARQL birthplace responses: data/raw/wikidata/birthplace/
+  - Cached responses for `P19` place-of-birth associations.
+  - Wikidata structured data is published under CC0.
+
 ## Notes
 
 - These are raw source snapshots only.
