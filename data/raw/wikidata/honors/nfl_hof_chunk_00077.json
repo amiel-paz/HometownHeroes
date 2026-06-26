@@ -1,0 +1,1 @@
+{"head": {"vars": ["pfr", "person", "personLabel", "hofId"]}, "results": {"bindings": [{"pfr": {"type": "literal", "value": "P/PaytWa00"}, "person": {"type": "uri", "value": "http://www.wikidata.org/entity/Q963117"}, "hofId": {"type": "literal", "value": "walter-payton"}, "personLabel": {"xml:lang": "en", "type": "literal", "value": "Walter Payton"}}]}}

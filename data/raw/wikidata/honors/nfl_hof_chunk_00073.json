@@ -1,0 +1,1 @@
+{"head": {"vars": ["pfr", "person", "personLabel", "hofId"]}, "results": {"bindings": [{"pfr": {"type": "literal", "value": "N/NewsOz00"}, "person": {"type": "uri", "value": "http://www.wikidata.org/entity/Q555608"}, "hofId": {"type": "literal", "value": "ozzie-newsome"}, "personLabel": {"xml:lang": "en", "type": "literal", "value": "Ozzie Newsome"}}]}}

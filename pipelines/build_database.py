@@ -24,6 +24,7 @@ NFL_DB = SCRATCH / "nfl_enrichment.sqlite"
 WIKIDATA_DB = SCRATCH / "wikidata_education_enrichment.sqlite"
 WIKIDATA_BIRTHPLACE_DB = SCRATCH / "wikidata_birthplace_enrichment.sqlite"
 NFL_STADIUM_DB = SCRATCH / "nfl_stadium_enrichment.sqlite"
+HONORS_DB = SCRATCH / "player_honors.sqlite"
 
 
 def sql_quote(value: str) -> str:
@@ -53,6 +54,7 @@ def create_schema(con: sqlite3.Connection) -> None:
         drop table if exists players;
         drop table if exists locations;
         drop table if exists player_location_events;
+        drop table if exists player_honor_summary;
         drop table if exists source_snapshots;
         drop view if exists geocoded_player_location_events;
         drop view if exists player_event_summary;
@@ -104,6 +106,18 @@ def create_schema(con: sqlite3.Connection) -> None:
             foreign key (location_id) references locations(location_id)
         );
 
+        create table player_honor_summary (
+            sport text not null,
+            player_id text not null,
+            all_star_count integer not null default 0,
+            all_pro_count integer not null default 0,
+            hof_inducted integer not null default 0,
+            hof_year integer,
+            honor_sources text,
+            primary key (sport, player_id),
+            foreign key (sport, player_id) references players(sport, player_id)
+        );
+
         create table source_snapshots (
             source_name text primary key,
             source_path text,
@@ -125,6 +139,8 @@ def attach_sources(con: sqlite3.Connection) -> None:
         con.execute(f"attach database {sql_quote(str(WIKIDATA_BIRTHPLACE_DB))} as wb")
     if NFL_STADIUM_DB.exists():
         con.execute(f"attach database {sql_quote(str(NFL_STADIUM_DB))} as ns")
+    if HONORS_DB.exists():
+        con.execute(f"attach database {sql_quote(str(HONORS_DB))} as honors")
 
 
 def load_players(con: sqlite3.Connection) -> None:
@@ -474,6 +490,27 @@ def load_events(con: sqlite3.Connection) -> None:
         )
 
 
+def load_honors(con: sqlite3.Connection) -> None:
+    if not HONORS_DB.exists():
+        return
+    con.executescript(
+        """
+        insert or replace into player_honor_summary
+        (sport, player_id, all_star_count, all_pro_count, hof_inducted, hof_year, honor_sources)
+        select
+            h.sport,
+            h.source_player_id,
+            h.all_star_count,
+            h.all_pro_count,
+            h.hof_inducted,
+            h.hof_year,
+            h.honor_sources
+        from honors.player_honor_summary h
+        join players p on p.sport = h.sport and p.player_id = h.source_player_id;
+        """
+    )
+
+
 def create_indexes_and_views(con: sqlite3.Connection) -> None:
     con.executescript(
         """
@@ -574,6 +611,8 @@ def add_sources(con: sqlite3.Connection) -> None:
         rows.append(("wikidata_birthplace", repo_path(WIKIDATA_BIRTHPLACE_DB), "Wikidata P19 birthplace cache"))
     if NFL_STADIUM_DB.exists():
         rows.append(("nfl_stadium_enrichment", repo_path(NFL_STADIUM_DB), "NFL schedule-derived home stadium geocode cache"))
+    if HONORS_DB.exists():
+        rows.append(("player_honors", repo_path(HONORS_DB), "MLB Lahman honors plus NFL Wikidata/Wikipedia honors cache"))
     con.executemany("insert or replace into source_snapshots values (?, ?, ?)", rows)
 
 
@@ -586,6 +625,10 @@ def write_summary(con: sqlite3.Connection) -> dict:
         "events": con.execute("select count(*) from player_location_events").fetchone()[0],
         "events_by_type": dict(con.execute("select event_type, count(*) from player_location_events group by event_type order by event_type").fetchall()),
         "pro_career_summary_players": dict(con.execute("select sport, count(*) from pro_career_summary group by sport order by sport").fetchall()),
+        "honor_summary_players": dict(con.execute("select sport, count(*) from player_honor_summary group by sport order by sport").fetchall()),
+        "hof_players": dict(
+            con.execute("select sport, count(*) from player_honor_summary where hof_inducted = 1 group by sport order by sport").fetchall()
+        ),
         "geocoded_events": con.execute("select count(*) from geocoded_player_location_events").fetchone()[0],
         "sf_50mi_non_pro_events": con.execute("select count(*) from sf_50mi_non_pro_player_pool").fetchone()[0],
         "sf_50mi_non_pro_players": con.execute("select count(distinct sport || ':' || player_id) from sf_50mi_non_pro_player_pool").fetchone()[0],
@@ -600,11 +643,12 @@ def main() -> None:
         OUT_DB.unlink()
     con = sqlite3.connect(OUT_DB)
     register_functions(con)
-    attach_sources(con)
     create_schema(con)
+    attach_sources(con)
     load_players(con)
     load_locations(con)
     load_events(con)
+    load_honors(con)
     create_indexes_and_views(con)
     add_sources(con)
     con.commit()

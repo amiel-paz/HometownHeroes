@@ -1,0 +1,1 @@
+{"head": {"vars": ["pfr", "person", "personLabel", "hofId"]}, "results": {"bindings": [{"pfr": {"type": "literal", "value": "D/DaviTe00"}, "person": {"type": "uri", "value": "http://www.wikidata.org/entity/Q732266"}, "hofId": {"type": "literal", "value": "terrell-davis"}, "personLabel": {"xml:lang": "en", "type": "literal", "value": "Terrell Davis"}}]}}

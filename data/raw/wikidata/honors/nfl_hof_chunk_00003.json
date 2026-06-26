@@ -1,0 +1,1 @@
+{"head": {"vars": ["pfr", "person", "personLabel", "hofId"]}, "results": {"bindings": [{"pfr": {"type": "literal", "value": "B/BailCh00"}, "person": {"type": "uri", "value": "http://www.wikidata.org/entity/Q1061040"}, "hofId": {"type": "literal", "value": "champ-bailey"}, "personLabel": {"xml:lang": "en", "type": "literal", "value": "Champ Bailey"}}]}}

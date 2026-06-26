@@ -1,0 +1,1 @@
+{"head": {"vars": ["pfr", "person", "personLabel", "hofId"]}, "results": {"bindings": [{"pfr": {"type": "literal", "value": "F/FitzLa00"}, "person": {"type": "uri", "value": "http://www.wikidata.org/entity/Q944199"}, "hofId": {"type": "literal", "value": "larry-fitzgerald"}, "personLabel": {"xml:lang": "en", "type": "literal", "value": "Larry Fitzgerald"}}]}}

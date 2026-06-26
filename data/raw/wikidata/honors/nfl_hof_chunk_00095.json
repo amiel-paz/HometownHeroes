@@ -1,0 +1,1 @@
+{"head": {"vars": ["pfr", "person", "personLabel", "hofId"]}, "results": {"bindings": [{"pfr": {"type": "literal", "value": "S/SwanLy00"}, "person": {"type": "uri", "value": "http://www.wikidata.org/entity/Q441528"}, "hofId": {"type": "literal", "value": "lynn-swann"}, "personLabel": {"xml:lang": "en", "type": "literal", "value": "Lynn Swann"}}]}}

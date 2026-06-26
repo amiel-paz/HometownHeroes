@@ -1,0 +1,1 @@
+{"head": {"vars": ["pfr", "person", "personLabel", "hofId"]}, "results": {"bindings": [{"pfr": {"type": "literal", "value": "M/McDaRa00"}, "person": {"type": "uri", "value": "http://www.wikidata.org/entity/Q524826"}, "hofId": {"type": "literal", "value": "randall-mcdaniel"}, "personLabel": {"xml:lang": "en", "type": "literal", "value": "Randall McDaniel"}}]}}

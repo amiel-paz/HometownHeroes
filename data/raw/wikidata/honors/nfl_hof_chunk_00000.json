@@ -1,0 +1,1 @@
+{"head": {"vars": ["pfr", "person", "personLabel", "hofId"]}, "results": {"bindings": [{"pfr": {"type": "literal", "value": "A/AikmTr00"}, "person": {"type": "uri", "value": "http://www.wikidata.org/entity/Q525002"}, "hofId": {"type": "literal", "value": "troy-aikman"}, "personLabel": {"xml:lang": "en", "type": "literal", "value": "Troy Aikman"}}]}}

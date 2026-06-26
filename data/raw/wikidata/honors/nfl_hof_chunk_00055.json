@@ -1,0 +1,1 @@
+{"head": {"vars": ["pfr", "person", "personLabel", "hofId"]}, "results": {"bindings": [{"pfr": {"type": "literal", "value": "K/KennCo00"}, "person": {"type": "uri", "value": "http://www.wikidata.org/entity/Q726104"}, "hofId": {"type": "literal", "value": "cortez-kennedy"}, "personLabel": {"xml:lang": "en", "type": "literal", "value": "Cortez Kennedy"}}]}}

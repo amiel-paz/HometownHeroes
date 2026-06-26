@@ -1,5 +1,6 @@
 # Local exploratory code and notebooks.
-scratch/
+scratch/*
+!scratch/pilot_visualizer_experiment.py
 .scratch/
 tmp/
 .tmp/

@@ -1,0 +1,1 @@
+{"head": {"vars": ["pfr", "person", "personLabel", "hofId"]}, "results": {"bindings": [{"pfr": {"type": "literal", "value": "L/LewiRa00"}, "person": {"type": "uri", "value": "http://www.wikidata.org/entity/Q44428"}, "hofId": {"type": "literal", "value": "ray-lewis"}, "personLabel": {"xml:lang": "en", "type": "literal", "value": "Ray Lewis"}}]}}
