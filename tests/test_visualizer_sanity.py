@@ -78,6 +78,28 @@ class AttributionTests(unittest.TestCase):
         self.assertIn("A &amp; B &lt; C", page)
 
 
+class RenderDeployTests(unittest.TestCase):
+    def test_render_blueprint_declares_python_web_service(self) -> None:
+        text = (ROOT / "render.yaml").read_text(encoding="utf-8")
+        for snippet in (
+            "type: web",
+            "runtime: python",
+            "python pipelines/render_build.py",
+            "--host 0.0.0.0 --port $PORT",
+            "healthCheckPath: /api/status",
+        ):
+            self.assertIn(snippet, text)
+        build_script = (ROOT / "pipelines" / "render_build.py").read_text(encoding="utf-8")
+        self.assertIn("pipelines/enrich_nba_alltime_wikidata.py", build_script)
+        self.assertIn("HH_RENDER_INCLUDE_MEDIA", build_script)
+
+    def test_repo_path_handles_hosted_database_paths(self) -> None:
+        outside = Path("/tmp/hometown_heroes.sqlite")
+        rendered = viz.repo_path(outside)
+        self.assertTrue(rendered.startswith("/"))
+        self.assertTrue(rendered.endswith("hometown_heroes.sqlite"))
+
+
 class RepositoryScrubTests(unittest.TestCase):
     def test_tracked_project_text_has_no_local_identity_fingerprints(self) -> None:
         files = subprocess.check_output(["git", "ls-files", "-z"], cwd=ROOT).decode("utf-8").split("\0")

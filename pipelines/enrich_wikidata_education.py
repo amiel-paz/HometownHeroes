@@ -367,8 +367,11 @@ def fetch_sport(con: sqlite3.Connection, sport: str, rows: list[dict[str, str]],
             continue
         log(f"fetching {sport} chunk {chunk_index + 1}/{len(grouped)} ({len(ids)} ids)")
         try:
-            data = sparql_request(query)
-            cache_path.write_text(json.dumps(data))
+            if cache_path.exists():
+                data = json.loads(cache_path.read_text())
+            else:
+                data = sparql_request(query)
+                cache_path.write_text(json.dumps(data))
             event_count = process_bindings(con, sport, chunk_rows, data, cache_path)
             con.execute(
                 """

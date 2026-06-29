@@ -26,7 +26,21 @@ exported to Postgres/PostGIS when the app needs always-on hosting.
 ## Practical Split
 
 - Local: `scratch/hometown_heroes.sqlite`.
-- Hosted: managed Postgres with PostGIS loaded from the same source caches.
+- Prototype hosted on Render: build `scratch/hometown_heroes.sqlite` during
+  deploy via `pipelines/render_build.py`, then serve it read-only from the
+  Python visualizer process.
+- Production hosted: managed Postgres with PostGIS loaded from the same source
+  caches.
 - Keep the durable model PostGIS-friendly: canonical places with latitude and
   longitude, association/event rows pointing to places, and query logic that can
   be expressed in SQL.
+
+## Render Notes
+
+- `render.yaml` is the deploy contract.
+- The service binds to `0.0.0.0:$PORT`.
+- `/api/status` is the health-check path.
+- Player photo/media enrichment is opt-in for Render builds because Wikimedia
+  image metadata fetches are intentionally slow and rate-limit aware.
+- The default Render build includes the all-time NBA Wikidata enrichment unless
+  `HH_RENDER_SKIP_NBA_ALLTIME=1` is set.

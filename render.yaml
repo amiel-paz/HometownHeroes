@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: hometown-heroes
+    runtime: python
+    plan: free
+    buildCommand: pip install -e . && python pipelines/render_build.py
+    startCommand: python scratch/pilot_visualizer_experiment.py --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/status
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: HH_RENDER_SLEEP_SECONDS
+        value: "0.2"

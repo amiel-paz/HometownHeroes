@@ -13,6 +13,7 @@ import argparse
 import html as html_lib
 import json
 import math
+import os
 import sqlite3
 import urllib.parse
 import urllib.request
@@ -22,7 +23,7 @@ from typing import Any
 
 
 ROOT = Path(__file__).resolve().parents[1]
-DB_PATH = ROOT / "scratch" / "hometown_heroes.sqlite"
+DB_PATH = Path(os.environ.get("HH_DB_PATH", ROOT / "scratch" / "hometown_heroes.sqlite"))
 GEOCODE_CACHE = ROOT / "scratch" / "place_geocode_cache.sqlite"
 ATTRIBUTIONS_PATH = ROOT / "ATTRIBUTIONS.md"
 
@@ -77,7 +78,11 @@ DEFAULT_QUERY = {
 
 
 def repo_path(path: Path) -> str:
-    return path.resolve().relative_to(ROOT).as_posix()
+    resolved = path.resolve()
+    try:
+        return resolved.relative_to(ROOT).as_posix()
+    except ValueError:
+        return str(resolved)
 
 
 def connect() -> sqlite3.Connection:
@@ -1805,8 +1810,8 @@ class Handler(BaseHTTPRequestHandler):
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run the experimental Hometown Heroes pilot visualizer.")
-    parser.add_argument("--host", default="127.0.0.1")
-    parser.add_argument("--port", type=int, default=8765)
+    parser.add_argument("--host", default=os.environ.get("HOST", "127.0.0.1"))
+    parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", "8765")))
     args = parser.parse_args()
 
     if not DB_PATH.exists():
