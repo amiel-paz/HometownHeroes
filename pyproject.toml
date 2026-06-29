@@ -1,5 +1,5 @@
 [project]
-name = "hometown-heroes"
+name = "HometownHeroes"
 version = "0.1.0"
 description = "Sports location data pipelines for birthplace, school, college, and professional associations."
 requires-python = ">=3.11"

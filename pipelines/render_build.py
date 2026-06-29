@@ -18,7 +18,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 PYTHON = sys.executable
 SCRATCH = ROOT / "scratch"
-APP_DB = SCRATCH / "hometown_heroes.sqlite"
+APP_DB = SCRATCH / "HometownHeroes.sqlite"
 
 
 def env_flag(name: str, default: bool = False) -> bool:

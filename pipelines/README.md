@@ -94,7 +94,7 @@ bash pipelines/run_nba_alltime_media.sh
 
 The all-time photo runner imports cached Wikidata image-file candidates from
 `scratch/nba_alltime_wikidata.sqlite`, fetches Wikimedia Commons `imageinfo`
-metadata, and rebuilds `scratch/hometown_heroes.sqlite`.
+metadata, and rebuilds `scratch/HometownHeroes.sqlite`.
 
 To add all-time NBA/ABA pro-team memberships from Wikidata P54:
 

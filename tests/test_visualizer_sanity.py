@@ -94,10 +94,10 @@ class RenderDeployTests(unittest.TestCase):
         self.assertIn("HH_RENDER_INCLUDE_MEDIA", build_script)
 
     def test_repo_path_handles_hosted_database_paths(self) -> None:
-        outside = Path("/tmp/hometown_heroes.sqlite")
+        outside = Path("/tmp/HometownHeroes.sqlite")
         rendered = viz.repo_path(outside)
         self.assertTrue(rendered.startswith("/"))
-        self.assertTrue(rendered.endswith("hometown_heroes.sqlite"))
+        self.assertTrue(rendered.endswith("HometownHeroes.sqlite"))
 
 
 class RepositoryScrubTests(unittest.TestCase):

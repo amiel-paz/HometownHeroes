@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: hometown-heroes
+    name: HometownHeroes
     runtime: python
     plan: free
     buildCommand: pip install -e . && python pipelines/render_build.py

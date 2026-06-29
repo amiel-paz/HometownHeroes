@@ -16,8 +16,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRATCH = ROOT / "scratch"
-OUT_DB = SCRATCH / "hometown_heroes.sqlite"
-SUMMARY = SCRATCH / "hometown_heroes_sql_summary.json"
+OUT_DB = SCRATCH / "HometownHeroes.sqlite"
+SUMMARY = SCRATCH / "HometownHeroesSqlSummary.json"
 
 MLB_DB = SCRATCH / "mlb_enrichment.sqlite"
 NFL_DB = SCRATCH / "nfl_enrichment.sqlite"

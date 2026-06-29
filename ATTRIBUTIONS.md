@@ -1,6 +1,6 @@
 # Attributions
 
-Hometown Heroes combines local code with third-party data snapshots and map
+HometownHeroes combines local code with third-party data snapshots and map
 services. The project code is licensed under the repository `LICENSE`; source
 datasets and media remain governed by their own licenses and terms.
 

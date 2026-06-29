@@ -25,8 +25,8 @@ exported to Postgres/PostGIS when the app needs always-on hosting.
 
 ## Practical Split
 
-- Local: `scratch/hometown_heroes.sqlite`.
-- Prototype hosted on Render: build `scratch/hometown_heroes.sqlite` during
+- Local: `scratch/HometownHeroes.sqlite`.
+- Prototype hosted on Render: build `scratch/HometownHeroes.sqlite` during
   deploy via `pipelines/render_build.py`, then serve it read-only from the
   Python visualizer process.
 - Production hosted: managed Postgres with PostGIS loaded from the same source

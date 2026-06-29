@@ -30,7 +30,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRATCH = ROOT / "scratch"
 DATA = ROOT / "data"
 
-HOMETOWN_DB = SCRATCH / "hometown_heroes.sqlite"
+HOMETOWN_DB = SCRATCH / "HometownHeroes.sqlite"
 WIKIDATA_DB = SCRATCH / "wikidata_education_enrichment.sqlite"
 OUT_DB = SCRATCH / "high_school_curation.sqlite"
 OUT_SUMMARY = SCRATCH / "high_school_curation_summary.json"

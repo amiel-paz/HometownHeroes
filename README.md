@@ -1,4 +1,4 @@
-# Hometown Heroes
+# HometownHeroes
 
 Experimental sports geolocation data pipelines and a tracked prototype
 visualizer for exploring athlete hometown, school, college, and pro-location

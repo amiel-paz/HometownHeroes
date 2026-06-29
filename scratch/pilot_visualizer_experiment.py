@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-EXPERIMENT: Pilot Hometown Heroes visualizer.
+EXPERIMENT: Pilot HometownHeroes visualizer.
 
 This is an explicitly tracked, agent-coded experiment for working out
 map/search/list interaction kinks before promoting any durable app
@@ -23,7 +23,7 @@ from typing import Any
 
 
 ROOT = Path(__file__).resolve().parents[1]
-DB_PATH = Path(os.environ.get("HH_DB_PATH", ROOT / "scratch" / "hometown_heroes.sqlite"))
+DB_PATH = Path(os.environ.get("HH_DB_PATH", ROOT / "scratch" / "HometownHeroes.sqlite"))
 GEOCODE_CACHE = ROOT / "scratch" / "place_geocode_cache.sqlite"
 ATTRIBUTIONS_PATH = ROOT / "ATTRIBUTIONS.md"
 
@@ -615,7 +615,7 @@ HTML = r"""
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Hometown Heroes Pilot Visualizer</title>
+  <title>HometownHeroes Pilot Visualizer</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <style>
     :root {
@@ -1129,7 +1129,7 @@ HTML = r"""
     <aside>
       <section class="controls">
         <div class="title">
-          <h1>Hometown Heroes</h1>
+          <h1>HometownHeroes</h1>
           <button id="themeToggle" class="theme-toggle" type="button" title="Toggle light or dark mode" aria-pressed="false">
             <span class="toggle-track" aria-hidden="true"></span>
             <span id="themeLabel">Light</span>
@@ -1771,7 +1771,7 @@ class Handler(BaseHTTPRequestHandler):
             return
         if path == "/attributions":
             text = ATTRIBUTIONS_PATH.read_text(encoding="utf-8")
-            self._send(200, render_text_page("Hometown Heroes Attributions", text), "text/html; charset=utf-8")
+            self._send(200, render_text_page("HometownHeroes Attributions", text), "text/html; charset=utf-8")
             return
         if path == "/api/status":
             with connect() as con:
@@ -1809,7 +1809,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Run the experimental Hometown Heroes pilot visualizer.")
+    parser = argparse.ArgumentParser(description="Run the experimental HometownHeroes pilot visualizer.")
     parser.add_argument("--host", default=os.environ.get("HOST", "127.0.0.1"))
     parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", "8765")))
     args = parser.parse_args()
