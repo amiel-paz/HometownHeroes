@@ -12,6 +12,7 @@ import csv
 import json
 import re
 import sqlite3
+import unicodedata
 import urllib.request
 import warnings
 import zipfile
@@ -32,6 +33,13 @@ SCORECARD_ZIP_URL = "https://ed-public-download.scorecard.network/downloads/Most
 SCORECARD_ZIP = RAW_EDU / "Most-Recent-Cohorts-Institution_06102026.zip"
 GAZETTEER_ZIP_URL = "https://www2.census.gov/geo/docs/maps-data/data/gazetteer/2025_Gazetteer/2025_Gaz_place_national.zip"
 GAZETTEER_ZIP = ROOT / "data/raw/geography/census-gazetteer-2025/2025_Gaz_place_national.zip"
+GEONAMES_DIR = ROOT / "data/raw/geography/geonames"
+GEONAMES_CITIES_URL = "https://download.geonames.org/export/dump/cities500.zip"
+GEONAMES_ADMIN1_URL = "https://download.geonames.org/export/dump/admin1CodesASCII.txt"
+GEONAMES_COUNTRY_URL = "https://download.geonames.org/export/dump/countryInfo.txt"
+GEONAMES_CITIES_ZIP = GEONAMES_DIR / "cities500.zip"
+GEONAMES_ADMIN1 = GEONAMES_DIR / "admin1CodesASCII.txt"
+GEONAMES_COUNTRY = GEONAMES_DIR / "countryInfo.txt"
 
 
 warnings.filterwarnings("ignore")
@@ -62,6 +70,32 @@ SCORECARD_ALIASES = {
     "holycross": "college of the holy cross",
     "okstate": "oklahoma state university main campus",
     "oklahoma state": "oklahoma state university main campus",
+}
+
+COUNTRY_ALIASES = {
+    "can": "CA",
+    "d r": "DO",
+    "dr": "DO",
+    "dominican republic": "DO",
+    "mexico": "MX",
+    "mexico": "MX",
+    "méxico": "MX",
+    "usa": "US",
+    "us": "US",
+    "united states": "US",
+    "u s a": "US",
+    "u s": "US",
+    "england": "GB",
+    "scotland": "GB",
+    "wales": "GB",
+    "northern ireland": "GB",
+    "south korea": "KR",
+    "korea": "KR",
+    "curacao": "CW",
+    "curaçao": "CW",
+    "u s virgin islands": "VI",
+    "us virgin islands": "VI",
+    "virgin islands": "VI",
 }
 
 
@@ -151,6 +185,14 @@ def place_name_norm(name: str | None) -> str:
     return name.lower()
 
 
+def ascii_norm(value: str | None) -> str:
+    text = unicodedata.normalize("NFKD", value or "")
+    text = "".join(ch for ch in text if not unicodedata.combining(ch))
+    text = text.replace("&", " and ")
+    text = re.sub(r"[^a-zA-Z0-9]+", " ", text)
+    return re.sub(r"\s+", " ", text).strip().lower()
+
+
 def load_census_places() -> dict[tuple[str, str], dict[str, str | float]]:
     download(GAZETTEER_ZIP_URL, GAZETTEER_ZIP)
     gaz: dict[tuple[str, str], dict[str, str | float]] = {}
@@ -179,6 +221,122 @@ def load_census_places() -> dict[tuple[str, str], dict[str, str | float]]:
         "source_label": "San Francisco, CA",
     }
     return gaz
+
+
+def load_geonames_countries() -> dict[str, dict[str, str]]:
+    download(GEONAMES_COUNTRY_URL, GEONAMES_COUNTRY)
+    countries: dict[str, dict[str, str]] = {}
+    with GEONAMES_COUNTRY.open(encoding="utf-8") as f:
+        for line in f:
+            if line.startswith("#") or not line.strip():
+                continue
+            parts = line.rstrip("\n").split("\t")
+            if len(parts) < 5:
+                continue
+            iso, iso3, fips, country = parts[0], parts[1], parts[3], parts[4]
+            countries[iso] = {"iso": iso, "iso3": iso3, "fips": fips, "country": country}
+    return countries
+
+
+def country_to_iso(country: str | None, countries: dict[str, dict[str, str]]) -> str | None:
+    key = ascii_norm(country)
+    if not key:
+        return None
+    if key in COUNTRY_ALIASES:
+        return COUNTRY_ALIASES[key]
+    for iso, row in countries.items():
+        if key in {ascii_norm(row["country"]), ascii_norm(row["iso"]), ascii_norm(row["iso3"]), ascii_norm(row["fips"])}:
+            return iso
+    return None
+
+
+def load_geonames_admin1() -> dict[tuple[str, str], set[str]]:
+    download(GEONAMES_ADMIN1_URL, GEONAMES_ADMIN1)
+    admin_names: dict[tuple[str, str], set[str]] = {}
+    with GEONAMES_ADMIN1.open(encoding="utf-8") as f:
+        for line in f:
+            parts = line.rstrip("\n").split("\t")
+            if len(parts) < 3 or "." not in parts[0]:
+                continue
+            country, admin1 = parts[0].split(".", 1)
+            names = {ascii_norm(parts[1]), ascii_norm(parts[2]), ascii_norm(admin1)}
+            admin_names[(country, admin1)] = {name for name in names if name}
+    return admin_names
+
+
+def load_geonames_cities() -> tuple[dict[tuple[str, str], list[dict[str, object]]], dict[tuple[str, str], set[str]], dict[str, dict[str, str]]]:
+    download(GEONAMES_CITIES_URL, GEONAMES_CITIES_ZIP)
+    countries = load_geonames_countries()
+    admin_names = load_geonames_admin1()
+    index: dict[tuple[str, str], list[dict[str, object]]] = {}
+    with zipfile.ZipFile(GEONAMES_CITIES_ZIP) as zf:
+        with zf.open("cities500.txt") as raw:
+            for raw_line in raw:
+                parts = raw_line.decode("utf-8", "replace").rstrip("\n").split("\t")
+                if len(parts) < 19:
+                    continue
+                country = parts[8]
+                admin1 = parts[10]
+                names = {ascii_norm(parts[1]), ascii_norm(parts[2])}
+                names.update(ascii_norm(name) for name in parts[3].split(",") if name)
+                names = {name for name in names if name}
+                row = {
+                    "geonameid": parts[0],
+                    "name": parts[1],
+                    "asciiname": parts[2],
+                    "country": country,
+                    "country_name": countries.get(country, {}).get("country", country),
+                    "admin1": admin1,
+                    "admin1_names": admin_names.get((country, admin1), set()),
+                    "latitude": float(parts[4]),
+                    "longitude": float(parts[5]),
+                    "population": int(parts[14] or 0),
+                }
+                for name in names:
+                    index.setdefault((country, name), []).append(row)
+    for candidates in index.values():
+        candidates.sort(key=lambda row: int(row["population"]), reverse=True)
+    return index, admin_names, countries
+
+
+def resolve_global_city(
+    geonames: dict[tuple[str, str], list[dict[str, object]]],
+    countries: dict[str, dict[str, str]],
+    city: str | None,
+    state: str | None,
+    country: str | None,
+) -> dict[str, object]:
+    iso = country_to_iso(country, countries)
+    city_key = ascii_norm(city)
+    if not iso or not city_key:
+        return {"status": "unresolved", "latitude": None, "longitude": None, "source_label": None, "source": None, "geonameid": None}
+    candidates = geonames.get((iso, city_key), [])
+    if not candidates:
+        return {"status": "unresolved", "latitude": None, "longitude": None, "source_label": None, "source": None, "geonameid": None}
+
+    state_key = ascii_norm(state)
+    matched = None
+    if state_key:
+        for row in candidates:
+            admin_names = row["admin1_names"]
+            if state_key in admin_names or state_key == ascii_norm(row["admin1"]):
+                matched = row
+                break
+    if matched is None:
+        matched = candidates[0]
+
+    label_parts = [str(matched["name"])]
+    if matched["admin1_names"]:
+        label_parts.append(sorted(matched["admin1_names"], key=len, reverse=True)[0].title())
+    label_parts.append(str(matched["country_name"]))
+    return {
+        "status": "matched",
+        "latitude": matched["latitude"],
+        "longitude": matched["longitude"],
+        "source_label": ", ".join(label_parts),
+        "source": "GeoNames cities500 city centroid",
+        "geonameid": matched["geonameid"],
+    }
 
 
 def make_institution_index(institutions: list[dict[str, str]]) -> dict[str, object]:
@@ -288,6 +446,7 @@ def main() -> None:
     appearances = load_rdata("Appearances")
     institutions = load_scorecard_institutions()
     census_places = load_census_places()
+    geonames_cities, _geonames_admin1, geonames_countries = load_geonames_cities()
     school_counts = Counter(college["schoolID"].dropna().astype(str))
 
     index = make_institution_index(institutions)
@@ -316,6 +475,14 @@ def main() -> None:
     birth_locations = []
     for (city, state, country), group in people.dropna(subset=["birthCity", "birthState"]).groupby(["birthCity", "birthState", "birthCountry"], dropna=False):
         loc = resolve_city(census_places, city, state, country)
+        source = "Census Gazetteer place centroid" if loc["status"] == "matched" else None
+        geonameid = None
+        if loc["status"] != "matched" and (country or "").upper() not in {"USA", "US"}:
+            global_loc = resolve_global_city(geonames_cities, geonames_countries, city, state, country)
+            if global_loc["status"] == "matched":
+                loc = global_loc
+                source = global_loc["source"]
+                geonameid = global_loc["geonameid"]
         birth_locations.append(
             {
                 "birth_city": city,
@@ -326,6 +493,8 @@ def main() -> None:
                 "latitude": loc["latitude"],
                 "longitude": loc["longitude"],
                 "geocode_label": loc["source_label"],
+                "geocode_source": source,
+                "geonameid": geonameid,
             }
         )
 

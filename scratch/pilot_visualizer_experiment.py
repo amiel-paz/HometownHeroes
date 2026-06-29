@@ -54,8 +54,10 @@ DEFAULT_QUERY = {
     "lat": 37.3382,
     "lon": -121.8863,
     "radius_mi": 50,
-    "start_year": 1970,
-    "end_year": 2026,
+    "pro_start_year": 1970,
+    "pro_end_year": 2026,
+    "birth_start_year": 1800,
+    "birth_end_year": 2026,
     "sports": ["MLB", "NFL", "NBA"],
     "groups": [
         {"clauses": [{"kind": "birthplace"}]},
@@ -121,7 +123,6 @@ def geocode_place(query: str) -> dict[str, Any]:
             "q": normalized,
             "format": "jsonv2",
             "limit": 1,
-            "countrycodes": "us",
         }
     )
     req = urllib.request.Request(
@@ -248,10 +249,18 @@ def normalize_query(payload: dict[str, Any]) -> dict[str, Any]:
     query["lat"] = float(query["lat"])
     query["lon"] = float(query["lon"])
     query["radius_mi"] = max(1.0, min(float(query["radius_mi"]), 500.0))
-    query["start_year"] = int(query["start_year"])
-    query["end_year"] = int(query["end_year"])
-    if query["start_year"] > query["end_year"]:
-        query["start_year"], query["end_year"] = query["end_year"], query["start_year"]
+    if "pro_start_year" not in query and "start_year" in query:
+        query["pro_start_year"] = query["start_year"]
+    if "pro_end_year" not in query and "end_year" in query:
+        query["pro_end_year"] = query["end_year"]
+    query["pro_start_year"] = int(query["pro_start_year"])
+    query["pro_end_year"] = int(query["pro_end_year"])
+    query["birth_start_year"] = int(query["birth_start_year"])
+    query["birth_end_year"] = int(query["birth_end_year"])
+    if query["pro_start_year"] > query["pro_end_year"]:
+        query["pro_start_year"], query["pro_end_year"] = query["pro_end_year"], query["pro_start_year"]
+    if query["birth_start_year"] > query["birth_end_year"]:
+        query["birth_start_year"], query["birth_end_year"] = query["birth_end_year"], query["birth_start_year"]
     query["sports"] = [sport for sport in query.get("sports", []) if sport in {"MLB", "NFL", "NBA"}] or [
         "MLB",
         "NFL",
@@ -302,14 +311,22 @@ def fetch_candidate_events(query: dict[str, Any]) -> list[dict[str, Any]]:
         bbox["max_lat"],
         bbox["min_lon"],
         bbox["max_lon"],
-        query["end_year"],
-        query["start_year"],
+        query["pro_end_year"],
+        query["pro_start_year"],
+        query["birth_start_year"],
+        query["birth_end_year"],
+        query["pro_end_year"],
+        query["pro_start_year"],
         query["radius_mi"],
     ]
     sql = f"""
         with candidate_events as (
             select
                 v.*,
+                p.birth_date,
+                p.birth_year,
+                p.debut_year,
+                p.final_year,
                 pcs.pro_start_year,
                 pcs.pro_end_year,
                 pcs.pro_location_seasons,
@@ -318,6 +335,12 @@ def fetch_candidate_events(query: dict[str, Any]) -> list[dict[str, Any]]:
                 coalesce(phs.hof_inducted, 0) as hof_inducted,
                 phs.hof_year,
                 phs.honor_sources,
+                pm.thumbnail_url,
+                pm.source_page_url as media_source_page_url,
+                pm.license as media_license,
+                pm.license_url as media_license_url,
+                pm.attribution_text as media_attribution,
+                pm.usable as media_usable,
                 3958.7613 * 2 * asin(
                     min(1.0, sqrt(
                         pow(sin(((v.latitude - ?) * 0.017453292519943295) / 2), 2) +
@@ -327,16 +350,27 @@ def fetch_candidate_events(query: dict[str, Any]) -> list[dict[str, Any]]:
                     ))
                 ) as distance_mi
             from geocoded_player_location_events v
+            left join players p
+              on p.sport = v.sport and p.player_id = v.player_id
             left join pro_career_summary pcs
               on pcs.sport = v.sport and pcs.player_id = v.player_id
             left join player_honor_summary phs
               on phs.sport = v.sport and phs.player_id = v.player_id
+            left join player_media pm
+              on pm.sport = v.sport and pm.player_id = v.player_id and pm.usable = 1
             where v.sport in ({placeholders(query["sports"])})
               and v.event_type in ({placeholders(event_types)})
               and v.latitude between ? and ?
               and v.longitude between ? and ?
+              and coalesce(p.debut_year, pcs.pro_start_year) is not null
+              and coalesce(p.final_year, pcs.pro_end_year) is not null
+              and coalesce(p.debut_year, pcs.pro_start_year) <= ?
+              and coalesce(p.final_year, pcs.pro_end_year) >= ?
+              and coalesce(p.birth_year, cast(substr(p.birth_date, 1, 4) as integer)) is not null
+              and coalesce(p.birth_year, cast(substr(p.birth_date, 1, 4) as integer)) between ? and ?
               and (
-                v.start_year is null
+                v.event_type <> 'played_pro'
+                or v.start_year is null
                 or v.end_year is null
                 or (v.start_year <= ? and v.end_year >= ?)
               )
@@ -398,6 +432,10 @@ def build_response(query: dict[str, Any]) -> dict[str, Any]:
                 "player_id": row["player_id"],
                 "display_name": row["display_name"],
                 "nearest_mi": row["distance_mi"],
+                "birth_date": row["birth_date"],
+                "birth_year": row["birth_year"],
+                "debut_year": row["debut_year"],
+                "final_year": row["final_year"],
                 "matched_blocks": sorted(player_blocks.get(key, set())),
                 "matched_groups": sorted(matched_groups.get(key, set())),
                 "matched_types": set(),
@@ -413,6 +451,14 @@ def build_response(query: dict[str, Any]) -> dict[str, Any]:
                 "hof_inducted": bool(row["hof_inducted"]),
                 "hof_year": row["hof_year"],
                 "honor_sources": row["honor_sources"],
+                "media": {
+                    "thumbnail_url": row["thumbnail_url"],
+                    "source_page_url": row["media_source_page_url"],
+                    "license": row["media_license"],
+                    "license_url": row["media_license_url"],
+                    "attribution": row["media_attribution"],
+                    "usable": bool(row["media_usable"]),
+                },
             },
         )
         player["nearest_mi"] = min(player["nearest_mi"], row["distance_mi"])
@@ -501,6 +547,7 @@ def build_response(query: dict[str, Any]) -> dict[str, Any]:
             "data_notes": [
                 "NFL pro rows are roster-season/home-stadium associations for 1999-current.",
                 "NBA pro rows are player/team seasons joined to schedule-derived venue city centroids.",
+                "MLB non-US birthplace coordinates use GeoNames cities500 centroids; GeoNames is licensed CC BY 4.0.",
                 "MLB All-Star and HOF fields come from Lahman; NFL and NBA HOF fields come from Wikidata; NFL Pro Bowl/All-Pro and NBA All-Star/All-NBA counts come from Wikipedia infobox career highlights.",
             ],
         },
@@ -823,6 +870,34 @@ HTML = r"""
       padding: 9px;
       background: #fff;
       display: grid;
+      grid-template-columns: 54px 1fr;
+      gap: 9px;
+      align-items: start;
+    }
+    .avatar {
+      width: 54px;
+      height: 54px;
+      border: 1px solid #cfd7e4;
+      border-radius: 6px;
+      overflow: hidden;
+      background: #e8edf5;
+      display: grid;
+      place-items: center;
+      color: #4b5563;
+      font-size: 15px;
+      font-weight: 800;
+      line-height: 1;
+      text-transform: uppercase;
+    }
+    .avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .player-body {
+      min-width: 0;
+      display: grid;
       gap: 5px;
     }
     .player-head {
@@ -856,6 +931,9 @@ HTML = r"""
       font-size: 12px;
       color: var(--muted);
       line-height: 1.35;
+    }
+    .photo-credit a {
+      color: var(--muted);
     }
     main {
       position: relative;
@@ -956,11 +1034,19 @@ HTML = r"""
           </label>
         </div>
         <div class="grid2">
-          <label>Start Year
-            <input id="startYear" type="number" value="1970">
+          <label>Pro Career Start
+            <input id="proStartYear" type="number" value="1970">
           </label>
-          <label>End Year
-            <input id="endYear" type="number" value="2026">
+          <label>Pro Career End
+            <input id="proEndYear" type="number" value="2026">
+          </label>
+        </div>
+        <div class="grid2">
+          <label>Birth Year Start
+            <input id="birthStartYear" type="number" value="1800">
+          </label>
+          <label>Birth Year End
+            <input id="birthEndYear" type="number" value="2026">
           </label>
         </div>
         <div class="filter-row">
@@ -1139,8 +1225,10 @@ HTML = r"""
         lat: center.lat,
         lon: center.lon,
         radius_mi: Number(document.getElementById('radius').value || 50),
-        start_year: Number(document.getElementById('startYear').value || 1970),
-        end_year: Number(document.getElementById('endYear').value || 2026),
+        pro_start_year: Number(document.getElementById('proStartYear').value || 1970),
+        pro_end_year: Number(document.getElementById('proEndYear').value || 2026),
+        birth_start_year: Number(document.getElementById('birthStartYear').value || 1800),
+        birth_end_year: Number(document.getElementById('birthEndYear').value || 2026),
         sports: selectedSports(),
         groups: groups.map(clauses => ({ clauses: clauses.map(kind => ({ kind })) })),
         sort: document.getElementById('sort').value,
@@ -1253,6 +1341,88 @@ HTML = r"""
       }).addTo(map);
     }
 
+    function escapeHTML(value) {
+      return String(value ?? '').replace(/[&<>"']/g, char => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      }[char]));
+    }
+
+    function initialsFor(name) {
+      const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+      if (!parts.length) return '?';
+      return parts.slice(0, 2).map(part => part[0]).join('').toUpperCase();
+    }
+
+    function playerMediaMarkup(player) {
+      const media = player.media || {};
+      const image = media.usable && media.thumbnail_url
+        ? `<img src="${escapeHTML(media.thumbnail_url)}" alt="${escapeHTML(player.display_name)}">`
+        : escapeHTML(initialsFor(player.display_name));
+      const creditParts = [];
+      if (media.attribution) creditParts.push(escapeHTML(media.attribution));
+      if (media.source_page_url) creditParts.push(`<a href="${escapeHTML(media.source_page_url)}" target="_blank" rel="noreferrer">source</a>`);
+      if (media.license_url && media.license) {
+        creditParts.push(`<a href="${escapeHTML(media.license_url)}" target="_blank" rel="noreferrer">${escapeHTML(media.license)}</a>`);
+      } else if (media.license) {
+        creditParts.push(escapeHTML(media.license));
+      }
+      return {
+        image,
+        credit: creditParts.length ? `<div class="small photo-credit">Photo: ${creditParts.join(' · ')}</div>` : ''
+      };
+    }
+
+    function valueOrNA(value) {
+      return value === null || value === undefined || value === '' ? 'NA' : String(value);
+    }
+
+    function earliestYear(...values) {
+      const years = values
+        .filter(value => value !== null && value !== undefined && value !== '')
+        .map(value => Number(value))
+        .filter(value => Number.isFinite(value));
+      return years.length ? Math.min(...years) : null;
+    }
+
+    function latestYear(...values) {
+      const years = values
+        .filter(value => value !== null && value !== undefined && value !== '')
+        .map(value => Number(value))
+        .filter(value => Number.isFinite(value));
+      return years.length ? Math.max(...years) : null;
+    }
+
+    function formatBirth(player) {
+      const raw = player.birth_date || '';
+      const match = String(raw).match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (match) {
+        const [, year, month, day] = match;
+        const date = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
+        return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+      }
+      return valueOrNA(player.birth_year);
+    }
+
+    function playerProfileLine(player) {
+      const proDebut = earliestYear(player.debut_year, player.pro_start_year);
+      const lastPlayed = latestYear(player.final_year, player.pro_end_year);
+      const career = player.pro_career_length ? `${player.pro_career_length} pro seasons` : 'NA';
+      const hof = player.hof_inducted ? `yes${player.hof_year ? ` (${player.hof_year})` : ''}` : 'no';
+      return [
+        `Birth: ${formatBirth(player)}`,
+        `Pro debut: ${valueOrNA(proDebut)}`,
+        `Last played: ${valueOrNA(lastPlayed)}`,
+        `Career: ${career}`,
+        `All-Star/Pro Bowl: ${player.all_star_count}`,
+        `All-Pro/All-NBA: ${player.all_pro_count}`,
+        `HOF: ${hof}`
+      ].map(escapeHTML).join(' · ');
+    }
+
     function renderPlayerList() {
       if (!latestData) return;
       const list = document.getElementById('list');
@@ -1283,24 +1453,22 @@ HTML = r"""
       players.forEach(player => {
         const item = document.createElement('article');
         item.className = 'player';
-        const career = player.pro_career_length ? `${player.pro_career_length} pro seasons` : 'career length unavailable';
-        const years = [player.first_year, player.last_year].filter(v => v !== null && v !== undefined).join('-') || 'no event years';
-        const hof = player.hof_inducted ? `yes${player.hof_year ? ` (${player.hof_year})` : ''}` : 'no';
-        const groupsText = player.matched_groups && player.matched_groups.length
-          ? `Groups ${player.matched_groups.join(', ')}`
-          : 'Matched query';
+        const media = playerMediaMarkup(player);
         item.innerHTML = `
-          <div class="player-head">
-            <strong>${player.display_name}</strong>
-            <span class="dist">${Number(player.nearest_mi).toFixed(1)} mi</span>
+          <div class="avatar">${media.image}</div>
+          <div class="player-body">
+            <div class="player-head">
+              <strong>${escapeHTML(player.display_name)}</strong>
+              <span class="dist">${Number(player.nearest_mi).toFixed(1)} mi</span>
+            </div>
+            <div class="chips">
+              <span class="chip">${escapeHTML(player.sport)}</span>
+              ${player.matched_blocks.map(optionLabel).map(label => `<span class="chip">${escapeHTML(label)}</span>`).join('')}
+            </div>
+            <div class="small">${playerProfileLine(player)}</div>
+            <div class="small">${escapeHTML(player.matched_locations.slice(0, 4).join(' | '))}</div>
+            ${media.credit}
           </div>
-          <div class="chips">
-            <span class="chip">${player.sport}</span>
-            <span class="chip">${groupsText}</span>
-            ${player.matched_blocks.map(optionLabel).map(label => `<span class="chip">${label}</span>`).join('')}
-          </div>
-          <div class="small">${years} · ${career} · All-Star/Pro Bowl ${player.all_star_count} · All-Pro/All-NBA ${player.all_pro_count} · HOF ${hof}</div>
-          <div class="small">${player.matched_locations.slice(0, 4).join(' | ')}</div>
         `;
         list.appendChild(item);
       });

@@ -22,10 +22,13 @@ SUMMARY = SCRATCH / "hometown_heroes_sql_summary.json"
 MLB_DB = SCRATCH / "mlb_enrichment.sqlite"
 NFL_DB = SCRATCH / "nfl_enrichment.sqlite"
 NBA_DB = SCRATCH / "nba_enrichment.sqlite"
+NBA_ALLTIME_DB = SCRATCH / "nba_alltime_wikidata.sqlite"
+NBA_ALLTIME_PRO_TEAMS_DB = SCRATCH / "nba_alltime_pro_teams.sqlite"
 WIKIDATA_DB = SCRATCH / "wikidata_education_enrichment.sqlite"
 WIKIDATA_BIRTHPLACE_DB = SCRATCH / "wikidata_birthplace_enrichment.sqlite"
 NFL_STADIUM_DB = SCRATCH / "nfl_stadium_enrichment.sqlite"
 HONORS_DB = SCRATCH / "player_honors.sqlite"
+PLAYER_MEDIA_DB = SCRATCH / "player_media.sqlite"
 
 
 def sql_quote(value: str) -> str:
@@ -56,6 +59,7 @@ def create_schema(con: sqlite3.Connection) -> None:
         drop table if exists locations;
         drop table if exists player_location_events;
         drop table if exists player_honor_summary;
+        drop table if exists player_media;
         drop table if exists source_snapshots;
         drop view if exists geocoded_player_location_events;
         drop view if exists player_event_summary;
@@ -119,6 +123,31 @@ def create_schema(con: sqlite3.Connection) -> None:
             foreign key (sport, player_id) references players(sport, player_id)
         );
 
+        create table player_media (
+            sport text not null,
+            player_id text not null,
+            wikidata_qid text,
+            person_label text,
+            article_title text,
+            media_source text,
+            file_title text,
+            thumbnail_url text,
+            original_url text,
+            source_page_url text,
+            author text,
+            credit text,
+            license text,
+            license_url text,
+            attribution_text text,
+            attribution_required integer not null default 1,
+            usable integer not null default 0,
+            rejection_reason text,
+            raw_cache_path text,
+            fetched_at text,
+            primary key (sport, player_id),
+            foreign key (sport, player_id) references players(sport, player_id)
+        );
+
         create table source_snapshots (
             source_name text primary key,
             source_path text,
@@ -137,6 +166,10 @@ def attach_sources(con: sqlite3.Connection) -> None:
     con.execute(f"attach database {sql_quote(str(NFL_DB))} as nfl")
     if NBA_DB.exists():
         con.execute(f"attach database {sql_quote(str(NBA_DB))} as nba")
+    if NBA_ALLTIME_DB.exists():
+        con.execute(f"attach database {sql_quote(str(NBA_ALLTIME_DB))} as nba_alltime")
+    if NBA_ALLTIME_PRO_TEAMS_DB.exists():
+        con.execute(f"attach database {sql_quote(str(NBA_ALLTIME_PRO_TEAMS_DB))} as nba_pro_alltime")
     con.execute(f"attach database {sql_quote(str(WIKIDATA_DB))} as wd")
     if WIKIDATA_BIRTHPLACE_DB.exists():
         con.execute(f"attach database {sql_quote(str(WIKIDATA_BIRTHPLACE_DB))} as wb")
@@ -144,6 +177,103 @@ def attach_sources(con: sqlite3.Connection) -> None:
         con.execute(f"attach database {sql_quote(str(NFL_STADIUM_DB))} as ns")
     if HONORS_DB.exists():
         con.execute(f"attach database {sql_quote(str(HONORS_DB))} as honors")
+    if PLAYER_MEDIA_DB.exists():
+        con.execute(f"attach database {sql_quote(str(PLAYER_MEDIA_DB))} as media")
+
+
+def prepare_nba_alltime_mapping(con: sqlite3.Connection) -> None:
+    if not NBA_ALLTIME_DB.exists():
+        return
+    con.executescript(
+        """
+        drop table if exists temp.nba_qid_current_ids;
+        drop table if exists temp.nba_alltime_player_map;
+
+        create temp table nba_qid_current_ids (
+            wikidata_qid text primary key,
+            current_player_id text
+        );
+
+        insert or ignore into nba_qid_current_ids
+        select wikidata_qid, source_player_id
+        from wd.wikidata_education_events
+        where sport = 'NBA'
+          and wikidata_qid is not null and wikidata_qid != ''
+          and source_player_id is not null and source_player_id != '';
+        """
+    )
+    if WIKIDATA_BIRTHPLACE_DB.exists():
+        con.executescript(
+            """
+            insert or ignore into nba_qid_current_ids
+            select wikidata_qid, source_player_id
+            from wb.wikidata_birthplace_events
+            where sport = 'NBA'
+              and wikidata_qid is not null and wikidata_qid != ''
+              and source_player_id is not null and source_player_id != '';
+            """
+        )
+    if NBA_ALLTIME_PRO_TEAMS_DB.exists():
+        con.executescript(
+            """
+            insert or replace into locations
+            (location_id, location_kind, label, city, state, country, latitude, longitude, geocode_status, geocode_source, source, source_key)
+            select
+                stable_id('NBA_ALLTIME_PRO_TEAM', team_qid),
+                'pro_team',
+                team_label,
+                nullif(hq_label, ''),
+                null,
+                nullif(country_label, ''),
+                coalesce(hq_latitude, venue_latitude),
+                coalesce(hq_longitude, venue_longitude),
+                case
+                    when coalesce(hq_latitude, venue_latitude) is not null
+                     and coalesce(hq_longitude, venue_longitude) is not null
+                    then 'matched'
+                    else 'unresolved'
+                end,
+                case
+                    when hq_latitude is not null and hq_longitude is not null then 'Wikidata P159 team headquarters/city coordinate'
+                    when venue_latitude is not null and venue_longitude is not null then 'Wikidata P115 home venue coordinate'
+                    else 'unresolved'
+                end,
+                'Wikidata P54 NBA/ABA all-time team membership',
+                team_qid
+            from nba_pro_alltime.nba_alltime_team_memberships
+            where is_major_pro = 1
+              and team_qid is not null and team_qid != '';
+            """
+        )
+    if PLAYER_MEDIA_DB.exists():
+        con.executescript(
+            """
+            insert or ignore into nba_qid_current_ids
+            select wikidata_qid, source_player_id
+            from media.media_candidates
+            where sport = 'NBA'
+              and wikidata_qid is not null and wikidata_qid != ''
+              and source_player_id is not null and source_player_id != ''
+              and source_player_id not like 'bbr:%'
+              and source_player_id glob '[0-9]*';
+            """
+        )
+    con.executescript(
+        """
+        create temp table nba_alltime_player_map as
+        select
+            p.bbr_id,
+            p.wikidata_qid,
+            coalesce(m.current_player_id, 'bbr:' || p.bbr_id) as player_id
+        from nba_alltime.nba_alltime_players p
+        left join nba_qid_current_ids m
+          on m.wikidata_qid = p.wikidata_qid
+        where p.bbr_id is not null and p.bbr_id != '';
+
+        create index temp.idx_nba_alltime_map_bbr on nba_alltime_player_map(bbr_id);
+        create index temp.idx_nba_alltime_map_player on nba_alltime_player_map(player_id);
+        """
+    )
 
 
 def load_players(con: sqlite3.Connection) -> None:
@@ -199,6 +329,69 @@ def load_players(con: sqlite3.Connection) -> None:
             where athlete_id is not null and athlete_id != '';
             """
         )
+    if NBA_ALLTIME_DB.exists():
+        con.executescript(
+            """
+            insert or ignore into players
+            (sport, player_id, display_name, birth_date, birth_year, debut_year, final_year, primary_external_id, source)
+            select
+                'NBA',
+                m.player_id,
+                p.display_name,
+                nullif(p.birth_date, ''),
+                p.birth_year,
+                null,
+                null,
+                p.bbr_id,
+                'Wikidata P2685 Basketball Reference NBA player ID'
+            from nba_alltime.nba_alltime_players p
+            join nba_alltime_player_map m on m.bbr_id = p.bbr_id
+            where p.bbr_id is not null and p.bbr_id != '';
+            """
+        )
+    if NBA_ALLTIME_PRO_TEAMS_DB.exists():
+        con.executescript(
+            """
+            create temp table if not exists existing_nba_pro_events as
+            select sport, player_id, location_id
+            from player_location_events
+            where sport = 'NBA'
+              and event_type = 'played_pro';
+
+            create index if not exists temp.idx_existing_nba_pro_events
+            on existing_nba_pro_events(player_id, location_id);
+
+            insert or replace into player_location_events
+            (event_id, sport, player_id, event_type, location_id, start_year, end_year, duration_years, source, source_key, confidence, notes)
+            select
+                stable_id('NBA_ALLTIME', map.player_id, 'played_pro', t.team_qid, t.start_year, t.end_year),
+                'NBA',
+                map.player_id,
+                'played_pro',
+                stable_id('NBA_ALLTIME_PRO_TEAM', t.team_qid),
+                t.start_year,
+                t.end_year,
+                case
+                    when t.start_year is not null and t.end_year is not null
+                    then max(1, t.end_year - t.start_year)
+                    else null
+                end,
+                'Wikidata P54 NBA/ABA team membership',
+                t.team_qid,
+                'source_reported',
+                'Team membership dates come from Wikidata P54 qualifiers. Duration is an approximate season count from year span. Coordinates prefer team headquarters/city to avoid current-arena anachronism.'
+            from nba_pro_alltime.nba_alltime_team_memberships t
+            join nba_alltime_player_map map on map.bbr_id = t.bbr_id
+            left join existing_nba_pro_events existing
+              on existing.player_id = map.player_id
+             and existing.location_id = stable_id('NBA_ALLTIME_PRO_TEAM', t.team_qid)
+            where t.is_major_pro = 1
+              and t.team_qid is not null and t.team_qid != ''
+              and coalesce(t.hq_latitude, t.venue_latitude) is not null
+              and coalesce(t.hq_longitude, t.venue_longitude) is not null
+              and existing.player_id is null;
+            """
+        )
 
 
 def load_locations(con: sqlite3.Connection) -> None:
@@ -216,7 +409,7 @@ def load_locations(con: sqlite3.Connection) -> None:
             latitude,
             longitude,
             geocode_status,
-            'Census Gazetteer place centroid',
+            coalesce(geocode_source, 'Census Gazetteer place centroid'),
             'MLB birth geocode cache',
             birth_city || '|' || birth_state || '|' || birth_country
         from mlb.mlb_birthplace_geocode_cache
@@ -363,6 +556,54 @@ def load_locations(con: sqlite3.Connection) -> None:
                 birthplace_qid
             from wb.wikidata_birthplace_events
             where birthplace_qid is not null and birthplace_qid != '';
+            """
+        )
+    if NBA_ALLTIME_DB.exists():
+        con.executescript(
+            """
+            insert or replace into locations
+            (location_id, location_kind, label, city, state, country, latitude, longitude, geocode_status, geocode_source, source, source_key)
+            select
+                stable_id('WIKIDATA_BIRTHPLACE', birthplace_qid),
+                'birthplace',
+                case
+                    when located_in_label is not null and located_in_label != ''
+                    then birthplace_label || ', ' || located_in_label
+                    else birthplace_label
+                end,
+                birthplace_label,
+                nullif(located_in_label, ''),
+                nullif(country_label, ''),
+                latitude,
+                longitude,
+                case when latitude is not null and longitude is not null then 'matched' else 'unresolved' end,
+                'Wikidata P625 coordinate',
+                'Wikidata P19 place of birth; NBA all-time P2685 cache',
+                birthplace_qid
+            from nba_alltime.nba_alltime_birthplaces
+            where birthplace_qid is not null and birthplace_qid != '';
+
+            insert or replace into locations
+            (location_id, location_kind, label, city, state, country, latitude, longitude, geocode_status, geocode_source, source, source_key)
+            select
+                stable_id('WIKIDATA', school_qid),
+                case
+                    when is_high_school = 1 then 'high_school'
+                    when is_university = 1 then 'college'
+                    else 'education'
+                end,
+                school_label,
+                located_in_label,
+                null,
+                null,
+                latitude,
+                longitude,
+                case when latitude is not null and longitude is not null then 'matched' else 'unresolved' end,
+                'Wikidata P625 coordinate',
+                'Wikidata P69 educated at; NBA all-time P2685 cache',
+                school_qid
+            from nba_alltime.nba_alltime_education
+            where school_qid is not null and school_qid != '';
             """
         )
     if NFL_STADIUM_DB.exists():
@@ -573,6 +814,91 @@ def load_events(con: sqlite3.Connection) -> None:
               );
             """
         )
+    if NBA_ALLTIME_DB.exists():
+        con.executescript(
+            """
+            create temp table if not exists existing_born_events as
+            select sport, player_id
+            from player_location_events
+            where event_type = 'born';
+
+            create index if not exists temp.idx_existing_born_events
+            on existing_born_events(sport, player_id);
+
+            insert or replace into player_location_events
+            (event_id, sport, player_id, event_type, location_id, start_year, end_year, duration_years, source, source_key, confidence, notes)
+            select
+                stable_id('NBA_ALLTIME', m.player_id, 'born', b.birthplace_qid),
+                'NBA',
+                m.player_id,
+                'born',
+                stable_id('WIKIDATA_BIRTHPLACE', b.birthplace_qid),
+                p.birth_year,
+                p.birth_year,
+                null,
+                'Wikidata P19 place of birth; NBA all-time P2685 cache',
+                b.birthplace_qid,
+                'source_reported',
+                'P19 means place of birth. Coordinates are for the birthplace entity, usually a city/place centroid.'
+            from nba_alltime.nba_alltime_birthplaces b
+            join nba_alltime.nba_alltime_players p on p.bbr_id = b.bbr_id
+            join nba_alltime_player_map m on m.bbr_id = b.bbr_id
+            where b.birthplace_qid is not null and b.birthplace_qid != ''
+              and not exists (
+                  select 1
+                  from existing_born_events e
+                  where e.sport = 'NBA'
+                    and e.player_id = m.player_id
+              );
+
+            drop table if exists temp.existing_nba_event_keys;
+            create temp table existing_nba_event_keys as
+            select sport, player_id, event_type, location_id
+            from player_location_events
+            where sport = 'NBA';
+
+            create index temp.idx_existing_nba_event_keys
+            on existing_nba_event_keys(player_id, event_type, location_id);
+
+            insert or replace into player_location_events
+            (event_id, sport, player_id, event_type, location_id, start_year, end_year, duration_years, source, source_key, confidence, notes)
+            select
+                stable_id('NBA_ALLTIME', m.player_id,
+                    case
+                        when e.is_high_school = 1 then 'attended_high_school'
+                        when e.is_university = 1 then 'attended_college'
+                        else 'attended_school'
+                    end,
+                    e.school_qid),
+                'NBA',
+                m.player_id,
+                case
+                    when e.is_high_school = 1 then 'attended_high_school'
+                    when e.is_university = 1 then 'attended_college'
+                    else 'attended_school'
+                end,
+                stable_id('WIKIDATA', e.school_qid),
+                null,
+                null,
+                null,
+                'Wikidata P69 educated at; NBA all-time P2685 cache',
+                e.school_qid,
+                'source_reported',
+                'P69 means educated at / attended; it does not prove sports participation.'
+            from nba_alltime.nba_alltime_education e
+            join nba_alltime_player_map m on m.bbr_id = e.bbr_id
+            left join existing_nba_event_keys existing
+              on existing.player_id = m.player_id
+             and existing.location_id = stable_id('WIKIDATA', e.school_qid)
+             and existing.event_type = case
+                 when e.is_high_school = 1 then 'attended_high_school'
+                 when e.is_university = 1 then 'attended_college'
+                 else 'attended_school'
+             end
+            where e.school_qid is not null and e.school_qid != ''
+              and existing.player_id is null;
+            """
+        )
     if NFL_STADIUM_DB.exists():
         con.executescript(
             """
@@ -618,6 +944,77 @@ def load_honors(con: sqlite3.Connection) -> None:
     )
 
 
+def load_media(con: sqlite3.Connection) -> None:
+    if not PLAYER_MEDIA_DB.exists():
+        return
+    con.executescript(
+        """
+        insert or replace into player_media
+        (sport, player_id, wikidata_qid, person_label, article_title, media_source, file_title,
+         thumbnail_url, original_url, source_page_url, author, credit, license, license_url,
+         attribution_text, attribution_required, usable, rejection_reason, raw_cache_path, fetched_at)
+        select
+            m.sport,
+            m.source_player_id,
+            m.wikidata_qid,
+            m.person_label,
+            m.article_title,
+            m.media_source,
+            m.file_title,
+            m.thumbnail_url,
+            m.original_url,
+            m.source_page_url,
+            m.author,
+            m.credit,
+            m.license,
+            m.license_url,
+            m.attribution_text,
+            m.attribution_required,
+            m.usable,
+            m.rejection_reason,
+            m.raw_cache_path,
+            m.fetched_at
+        from media.player_media m
+        join players p on p.sport = m.sport and p.player_id = m.source_player_id;
+        """
+    )
+    if NBA_ALLTIME_DB.exists():
+        con.executescript(
+            """
+            insert or replace into player_media
+            (sport, player_id, wikidata_qid, person_label, article_title, media_source, file_title,
+             thumbnail_url, original_url, source_page_url, author, credit, license, license_url,
+             attribution_text, attribution_required, usable, rejection_reason, raw_cache_path, fetched_at)
+            select
+                m.sport,
+                map.player_id,
+                m.wikidata_qid,
+                m.person_label,
+                m.article_title,
+                m.media_source,
+                m.file_title,
+                m.thumbnail_url,
+                m.original_url,
+                m.source_page_url,
+                m.author,
+                m.credit,
+                m.license,
+                m.license_url,
+                m.attribution_text,
+                m.attribution_required,
+                m.usable,
+                m.rejection_reason,
+                m.raw_cache_path,
+                m.fetched_at
+            from media.player_media m
+            join nba_alltime_player_map map
+              on m.sport = 'NBA'
+             and m.source_player_id = 'bbr:' || map.bbr_id
+            join players p on p.sport = 'NBA' and p.player_id = map.player_id;
+            """
+        )
+
+
 def create_indexes_and_views(con: sqlite3.Connection) -> None:
     con.executescript(
         """
@@ -626,6 +1023,7 @@ def create_indexes_and_views(con: sqlite3.Connection) -> None:
         create index idx_events_location on player_location_events(location_id);
         create index idx_locations_kind on locations(location_kind);
         create index idx_locations_lat_lon on locations(latitude, longitude);
+        create index idx_player_media_usable on player_media(sport, player_id, usable);
 
         create view geocoded_player_location_events as
         select
@@ -711,6 +1109,7 @@ def create_indexes_and_views(con: sqlite3.Connection) -> None:
 def add_sources(con: sqlite3.Connection) -> None:
     rows = [
         ("mlb_enrichment", repo_path(MLB_DB), "MLB Lahman/Chadwick/Scorecard/Census cache"),
+        ("geonames", "data/raw/geography/geonames", "GeoNames cities500/admin1/countryInfo cache for non-US MLB birthplace centroids; CC BY 4.0"),
         ("nfl_enrichment", repo_path(NFL_DB), "NFL nflverse/Scorecard cache"),
         ("wikidata_education", repo_path(WIKIDATA_DB), "Wikidata P69 education cache"),
     ]
@@ -722,6 +1121,12 @@ def add_sources(con: sqlite3.Connection) -> None:
         rows.append(("nfl_stadium_enrichment", repo_path(NFL_STADIUM_DB), "NFL schedule-derived home stadium geocode cache"))
     if HONORS_DB.exists():
         rows.append(("player_honors", repo_path(HONORS_DB), "MLB Lahman honors plus NFL Wikidata/Wikipedia honors cache"))
+    if PLAYER_MEDIA_DB.exists():
+        rows.append(("player_media", repo_path(PLAYER_MEDIA_DB), "Wikidata/Wikimedia player profile media metadata cache"))
+    if NBA_ALLTIME_DB.exists():
+        rows.append(("nba_alltime_wikidata", repo_path(NBA_ALLTIME_DB), "Wikidata P2685 all-time NBA/ABA identity, birthplace, and education cache"))
+    if NBA_ALLTIME_PRO_TEAMS_DB.exists():
+        rows.append(("nba_alltime_pro_teams", repo_path(NBA_ALLTIME_PRO_TEAMS_DB), "Wikidata P54 all-time NBA/ABA pro-team membership cache"))
     con.executemany("insert or replace into source_snapshots values (?, ?, ?)", rows)
 
 
@@ -735,6 +1140,7 @@ def write_summary(con: sqlite3.Connection) -> dict:
         "events_by_type": dict(con.execute("select event_type, count(*) from player_location_events group by event_type order by event_type").fetchall()),
         "pro_career_summary_players": dict(con.execute("select sport, count(*) from pro_career_summary group by sport order by sport").fetchall()),
         "honor_summary_players": dict(con.execute("select sport, count(*) from player_honor_summary group by sport order by sport").fetchall()),
+        "media_players": dict(con.execute("select sport, count(*) from player_media where usable = 1 group by sport order by sport").fetchall()),
         "hof_players": dict(
             con.execute("select sport, count(*) from player_honor_summary where hof_inducted = 1 group by sport order by sport").fetchall()
         ),
@@ -754,10 +1160,12 @@ def main() -> None:
     register_functions(con)
     create_schema(con)
     attach_sources(con)
+    prepare_nba_alltime_mapping(con)
     load_players(con)
     load_locations(con)
     load_events(con)
     load_honors(con)
+    load_media(con)
     create_indexes_and_views(con)
     add_sources(con)
     con.commit()
