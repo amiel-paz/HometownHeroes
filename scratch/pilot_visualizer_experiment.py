@@ -27,25 +27,29 @@ GEOCODE_CACHE = ROOT / "scratch" / "place_geocode_cache.sqlite"
 EVENT_TYPE_GROUPS = {
     "birthplace": ["born"],
     "high_school": ["attended_high_school"],
-    "college": ["attended_college", "attended_school", "played_college"],
+    "college": ["attended_college", "played_college"],
     "pro_sports": ["played_pro"],
+}
+
+EVENT_LAYER_BY_TYPE = {
+    "born": "born",
+    "attended_high_school": "attended_high_school",
+    "attended_college": "college",
+    "played_college": "college",
+    "played_pro": "played_pro",
 }
 
 EVENT_LABELS = {
     "born": "Birthplace",
     "attended_high_school": "High School",
-    "attended_college": "College",
-    "attended_school": "School",
-    "played_college": "College Sports",
+    "college": "College",
     "played_pro": "Pro Sports",
 }
 
 EVENT_COLORS = {
     "born": "#2563eb",
     "attended_high_school": "#16a34a",
-    "attended_college": "#7c3aed",
-    "attended_school": "#a855f7",
-    "played_college": "#ea580c",
+    "college": "#7c3aed",
     "played_pro": "#dc2626",
 }
 
@@ -462,9 +466,10 @@ def build_response(query: dict[str, Any]) -> dict[str, Any]:
             },
         )
         player["nearest_mi"] = min(player["nearest_mi"], row["distance_mi"])
-        player["matched_types"].add(row["event_type"])
+        event_layer = EVENT_LAYER_BY_TYPE.get(row["event_type"], row["event_type"])
+        player["matched_types"].add(event_layer)
         player["matched_locations"].add(row["location_label"])
-        player["location_keys"].add(f"{row['location_id']}|{row['event_type']}")
+        player["location_keys"].add(f"{row['location_id']}|{event_layer}")
         for field, target in (("start_year", "first_year"), ("end_year", "last_year")):
             if row[field] is not None:
                 if player[target] is None:
@@ -474,7 +479,7 @@ def build_response(query: dict[str, Any]) -> dict[str, Any]:
                 else:
                     player[target] = max(player[target], row[field])
 
-        dot_key = (row["location_id"], row["event_type"])
+        dot_key = (row["location_id"], event_layer)
         dot = dots.setdefault(
             dot_key,
             {
@@ -483,10 +488,10 @@ def build_response(query: dict[str, Any]) -> dict[str, Any]:
                 "properties": {
                     "location_id": row["location_id"],
                     "label": row["location_label"],
-                    "event_type": row["event_type"],
-                    "event_label": EVENT_LABELS.get(row["event_type"], row["event_type"]),
-                    "color": EVENT_COLORS.get(row["event_type"], "#6b7280"),
-                    "filter_key": f"{row['location_id']}|{row['event_type']}",
+                    "event_type": event_layer,
+                    "event_label": EVENT_LABELS.get(event_layer, event_layer),
+                    "color": EVENT_COLORS.get(event_layer, "#6b7280"),
+                    "filter_key": f"{row['location_id']}|{event_layer}",
                     "players": set(),
                     "events": 0,
                     "nearest_mi": row["distance_mi"],
@@ -569,10 +574,33 @@ HTML = r"""
       color-scheme: light;
       --ink: #172033;
       --muted: #657085;
-      --line: #d9dee8;
+      --line: #e3e7ee;
       --panel: #ffffff;
-      --bg: #eef1f5;
+      --bg: #f7f9fc;
       --accent: #1663d6;
+      --field: #f1f4f8;
+      --chip: #eef2f7;
+      --chip-ink: #374151;
+      --float: rgba(255,255,255,.94);
+      --focus: rgba(22, 99, 214, .22);
+      --shadow: rgba(15, 23, 42, .12);
+      --sidebar-shadow: rgba(15, 23, 42, .08);
+    }
+    body.theme-dark {
+      color-scheme: dark;
+      --ink: #e8edf5;
+      --muted: #9ca8bb;
+      --line: #263244;
+      --panel: #111827;
+      --bg: #0b1120;
+      --accent: #5aa2ff;
+      --field: #1b2535;
+      --chip: #202c3e;
+      --chip-ink: #d8e0ee;
+      --float: rgba(17,24,39,.94);
+      --focus: rgba(90, 162, 255, .28);
+      --shadow: rgba(0, 0, 0, .3);
+      --sidebar-shadow: rgba(0, 0, 0, .32);
     }
     * { box-sizing: border-box; }
     body {
@@ -585,21 +613,22 @@ HTML = r"""
     .app {
       height: 100vh;
       display: grid;
-      grid-template-columns: minmax(360px, 430px) 1fr;
+      grid-template-columns: clamp(400px, 32vw, 500px) minmax(0, 1fr);
       overflow: hidden;
     }
     aside {
       display: grid;
       grid-template-rows: auto auto auto 1fr;
       min-width: 0;
-      border-right: 1px solid var(--line);
       background: var(--panel);
       overflow: hidden;
+      box-shadow: 8px 0 24px var(--sidebar-shadow);
+      z-index: 600;
     }
     .controls {
-      padding: 14px;
+      padding: 18px 20px 14px;
       display: grid;
-      gap: 10px;
+      gap: 13px;
       border-bottom: 1px solid var(--line);
     }
     .title {
@@ -609,18 +638,17 @@ HTML = r"""
       gap: 12px;
     }
     h1 {
-      font-size: 18px;
+      font-size: 24px;
       line-height: 1.1;
       margin: 0;
       font-weight: 750;
     }
     .badge {
       font-size: 11px;
-      color: #7a4f00;
-      background: #fff5d6;
-      border: 1px solid #f1d27b;
-      border-radius: 8px;
-      padding: 4px 7px;
+      color: var(--muted);
+      background: transparent;
+      border: 0;
+      padding: 0;
       white-space: nowrap;
     }
     .row {
@@ -637,19 +665,23 @@ HTML = r"""
     label {
       display: grid;
       gap: 4px;
-      font-size: 11px;
+      font-size: 10px;
       color: var(--muted);
-      font-weight: 650;
+      font-weight: 750;
       text-transform: uppercase;
     }
     input, select, button {
-      min-height: 34px;
-      border: 1px solid var(--line);
-      border-radius: 7px;
-      padding: 7px 9px;
+      min-height: 38px;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      padding: 8px 10px;
       font: inherit;
-      background: #fff;
+      background: var(--field);
       color: var(--ink);
+    }
+    input:focus, select:focus, button:focus-visible {
+      outline: 2px solid var(--focus);
+      outline-offset: 1px;
     }
     button {
       cursor: pointer;
@@ -661,7 +693,7 @@ HTML = r"""
       color: #fff;
     }
     button.icon {
-      width: 34px;
+      width: 38px;
       padding: 0;
       display: inline-grid;
       place-items: center;
@@ -672,6 +704,41 @@ HTML = r"""
       background: transparent;
       color: var(--accent);
       padding: 3px 0;
+    }
+    .theme-toggle {
+      min-height: 30px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 8px;
+      color: var(--muted);
+      background: transparent;
+      border: 0;
+      font-size: 12px;
+      font-weight: 750;
+    }
+    .theme-toggle .toggle-track {
+      width: 34px;
+      height: 18px;
+      border-radius: 999px;
+      background: var(--field);
+      position: relative;
+      box-shadow: inset 0 0 0 1px var(--line);
+    }
+    .theme-toggle .toggle-track::after {
+      content: "";
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      top: 2px;
+      left: 2px;
+      border-radius: 50%;
+      background: var(--panel);
+      box-shadow: 0 1px 3px var(--shadow);
+      transition: transform .16s ease;
+    }
+    body.theme-dark .theme-toggle .toggle-track::after {
+      transform: translateX(16px);
     }
     .place-wrap {
       position: relative;
@@ -690,8 +757,8 @@ HTML = r"""
       padding: 4px;
       border: 1px solid var(--line);
       border-radius: 8px;
-      background: #fff;
-      box-shadow: 0 12px 26px rgba(15, 23, 42, .16);
+      background: var(--panel);
+      box-shadow: 0 12px 26px var(--shadow);
     }
     .suggestions.open { display: grid; }
     .suggestion {
@@ -708,7 +775,7 @@ HTML = r"""
     }
     .suggestion:hover,
     .suggestion.active {
-      background: #edf4ff;
+      background: var(--field);
     }
     .suggestion span {
       color: var(--muted);
@@ -718,16 +785,16 @@ HTML = r"""
     .filter-row {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 8px;
+      gap: 14px;
     }
     .filter-group {
       display: grid;
-      gap: 7px;
+      gap: 8px;
       align-content: start;
-      padding: 8px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: #f8fafc;
+      padding: 0;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
     }
     .filter-title {
       font-size: 11px;
@@ -738,7 +805,7 @@ HTML = r"""
     }
     .checks {
       display: flex;
-      gap: 8px 10px;
+      gap: 7px 10px;
       align-items: center;
       flex-wrap: wrap;
       font-size: 13px;
@@ -754,16 +821,13 @@ HTML = r"""
       min-height: 20px;
     }
     .checks input { min-height: auto; }
-    @media (max-width: 520px) {
-      .filter-row { grid-template-columns: 1fr; }
-    }
     .query-builder {
       display: grid;
-      gap: 8px;
-      padding: 10px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: #f8fafc;
+      gap: 9px;
+      padding: 2px 0 0;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
     }
     .query-help {
       font-size: 12px;
@@ -772,11 +836,12 @@ HTML = r"""
     }
     .group {
       display: grid;
-      gap: 8px;
-      padding: 8px;
-      border: 1px solid #dfe5ef;
-      border-radius: 8px;
-      background: #fff;
+      gap: 7px;
+      padding: 0 0 0 10px;
+      border: 0;
+      border-left: 2px solid var(--line);
+      border-radius: 0;
+      background: transparent;
     }
     .group-head {
       display: flex;
@@ -789,8 +854,8 @@ HTML = r"""
     }
     .clause {
       display: grid;
-      grid-template-columns: 1fr 34px;
-      gap: 8px;
+      grid-template-columns: 1fr 38px;
+      gap: 7px;
     }
     .or-divider {
       display: flex;
@@ -808,7 +873,7 @@ HTML = r"""
       flex: 1;
     }
     .meta {
-      padding: 9px 14px;
+      padding: 8px 20px;
       color: var(--muted);
       font-size: 12px;
       line-height: 1.35;
@@ -819,9 +884,9 @@ HTML = r"""
       align-items: center;
       justify-content: space-between;
       gap: 8px;
-      padding: 9px 14px;
+      padding: 10px 20px;
       border-bottom: 1px solid var(--line);
-      background: #fff;
+      background: var(--panel);
       position: sticky;
       top: 0;
       z-index: 2;
@@ -849,9 +914,9 @@ HTML = r"""
     }
     .list {
       overflow: auto;
-      padding: 8px;
+      padding: 0 20px 16px;
       display: grid;
-      gap: 8px;
+      gap: 0;
       align-content: start;
       min-height: 180px;
     }
@@ -862,13 +927,14 @@ HTML = r"""
       line-height: 1.35;
       border: 1px dashed var(--line);
       border-radius: 8px;
-      background: #fafbfc;
+      background: var(--field);
     }
     .player {
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      padding: 9px;
-      background: #fff;
+      border: 0;
+      border-bottom: 1px solid var(--line);
+      border-radius: 0;
+      padding: 12px 0;
+      background: transparent;
       display: grid;
       grid-template-columns: 54px 1fr;
       gap: 9px;
@@ -877,13 +943,13 @@ HTML = r"""
     .avatar {
       width: 54px;
       height: 54px;
-      border: 1px solid #cfd7e4;
+      border: 1px solid var(--line);
       border-radius: 6px;
       overflow: hidden;
-      background: #e8edf5;
+      background: var(--field);
       display: grid;
       place-items: center;
-      color: #4b5563;
+      color: var(--muted);
       font-size: 15px;
       font-weight: 800;
       line-height: 1;
@@ -922,10 +988,10 @@ HTML = r"""
     }
     .chip {
       font-size: 11px;
-      border-radius: 7px;
-      background: #eef2f7;
+      border-radius: 999px;
+      background: var(--chip);
       padding: 3px 6px;
-      color: #374151;
+      color: var(--chip-ink);
     }
     .small {
       font-size: 12px;
@@ -949,13 +1015,13 @@ HTML = r"""
       left: 12px;
       bottom: 12px;
       max-width: min(520px, calc(100vw - 470px));
-      background: rgba(255,255,255,.94);
-      border: 1px solid var(--line);
-      border-radius: 8px;
+      background: var(--float);
+      border: 0;
+      border-radius: 999px;
       padding: 8px 10px;
       font-size: 12px;
       color: var(--muted);
-      box-shadow: 0 6px 16px rgba(15, 23, 42, .12);
+      box-shadow: 0 6px 16px var(--shadow);
     }
     .map-status strong {
       display: block;
@@ -973,14 +1039,14 @@ HTML = r"""
       z-index: 500;
       right: 12px;
       top: 12px;
-      background: rgba(255,255,255,.94);
-      border: 1px solid var(--line);
-      border-radius: 8px;
+      background: var(--float);
+      border: 0;
+      border-radius: 10px;
       padding: 8px 10px;
       display: grid;
       gap: 5px;
       font-size: 12px;
-      box-shadow: 0 6px 16px rgba(15, 23, 42, .12);
+      box-shadow: 0 6px 16px var(--shadow);
     }
     .legend-row {
       display: flex;
@@ -993,12 +1059,13 @@ HTML = r"""
       border-radius: 50%;
       display: inline-block;
     }
-    @media (max-width: 860px) {
+    @media (max-width: 760px) {
       .app { grid-template-columns: 1fr; grid-template-rows: 48vh 52vh; }
       main { order: 1; }
-      aside { order: 2; border-right: 0; border-top: 1px solid var(--line); overflow: auto; }
+      aside { order: 2; border-right: 0; border-top: 1px solid var(--line); overflow: auto; box-shadow: none; }
       .map-status { max-width: calc(100vw - 24px); }
       .controls { padding-bottom: 10px; }
+      .filter-row { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -1008,7 +1075,10 @@ HTML = r"""
       <section class="controls">
         <div class="title">
           <h1>Hometown Heroes</h1>
-          <span class="badge">Experiment</span>
+          <button id="themeToggle" class="theme-toggle" type="button" title="Toggle light or dark mode" aria-pressed="false">
+            <span class="toggle-track" aria-hidden="true"></span>
+            <span id="themeLabel">Light</span>
+          </button>
         </div>
         <div class="row">
           <div class="place-wrap">
@@ -1111,13 +1181,36 @@ HTML = r"""
     let activeSuggestionIndex = -1;
     let suggestionTimer = null;
     let suggestionRequestId = 0;
+    let currentTheme = localStorage.getItem('hhTheme') || 'light';
+    let tileLayer = null;
 
     const map = L.map('map', { zoomControl: true }).setView([center.lat, center.lon], 9);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '&copy; OpenStreetMap contributors'
-    }).addTo(map);
+    const tileThemes = {
+      light: {
+        url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        options: { maxZoom: 19, attribution: '&copy; OpenStreetMap contributors' }
+      },
+      dark: {
+        url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+        options: { maxZoom: 20, attribution: '&copy; OpenStreetMap contributors &copy; CARTO' }
+      }
+    };
     resultLayer.addTo(map);
+
+    function applyTheme(theme) {
+      currentTheme = theme === 'dark' ? 'dark' : 'light';
+      document.body.classList.toggle('theme-dark', currentTheme === 'dark');
+      localStorage.setItem('hhTheme', currentTheme);
+      const toggle = document.getElementById('themeToggle');
+      const label = document.getElementById('themeLabel');
+      if (toggle) toggle.setAttribute('aria-pressed', currentTheme === 'dark' ? 'true' : 'false');
+      if (label) label.textContent = currentTheme === 'dark' ? 'Dark' : 'Light';
+      if (tileLayer) tileLayer.remove();
+      const spec = tileThemes[currentTheme];
+      tileLayer = L.tileLayer(spec.url, spec.options).addTo(map);
+      tileLayer.bringToBack();
+      if (centerMarker || radiusLayer) updateCenterLayers();
+    }
 
     function optionLabel(kind) {
       return {
@@ -1333,9 +1426,10 @@ HTML = r"""
       if (centerMarker) centerMarker.remove();
       if (radiusLayer) radiusLayer.remove();
       centerMarker = L.marker([center.lat, center.lon]).addTo(map);
+      const radiusColor = getComputedStyle(document.body).getPropertyValue('--ink').trim() || '#111827';
       radiusLayer = L.circle([center.lat, center.lon], {
         radius: Number(document.getElementById('radius').value || 50) * 1609.344,
-        color: '#111827',
+        color: radiusColor,
         weight: 2,
         fill: false
       }).addTo(map);
@@ -1503,8 +1597,7 @@ HTML = r"""
 
       document.getElementById('meta').textContent =
         `${data.summary.players.toLocaleString()} athletes · ${data.summary.location_features.toLocaleString()} map points · ${data.summary.qualified_events.toLocaleString()} matching events`;
-      document.getElementById('mapStatus').textContent =
-        `Click a colored dot to filter the Players list. ${data.summary.data_notes.join(' ')}`;
+      document.getElementById('mapStatus').textContent = 'Click a colored dot to filter the Players list.';
     }
 
     async function runQuery() {
@@ -1563,6 +1656,9 @@ HTML = r"""
     document.getElementById('allStarOnly').addEventListener('change', runQuery);
     document.getElementById('allProOnly').addEventListener('change', runQuery);
     document.getElementById('showPlayers').addEventListener('click', jumpToPlayers);
+    document.getElementById('themeToggle').addEventListener('click', () => {
+      applyTheme(currentTheme === 'dark' ? 'light' : 'dark');
+    });
     document.getElementById('clearLocationFilter').addEventListener('click', () => {
       activeLocationFilter = null;
       renderPlayerList();
@@ -1577,6 +1673,7 @@ HTML = r"""
 
     renderGroups();
     renderLegend();
+    applyTheme(currentTheme);
     updateCenterLayers();
     runQuery();
   </script>
