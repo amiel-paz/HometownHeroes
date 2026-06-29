@@ -30,12 +30,26 @@ Acquired on 2026-06-24.
     - `nba/schedules/parquet/`: schedule rows with home venue name, city, and state.
     - `nba/rosters/parquet/`: current/recent roster rows with birthplace fields.
   - NBA pro location rows are player/team season associations joined to the team's schedule-derived home venue city centroid.
+- Wikidata all-time NBA/ABA enrichment cache:
+  - `data/raw/wikidata/nba_alltime/`: Basketball Reference NBA player IDs, birthplace rows, and education rows.
+  - `data/raw/wikidata/nba_alltime_pro_teams/`: P54 team-membership rows filtered to major NBA/ABA/BAA/NBL league context.
+  - Wikidata structured data is published under CC0.
 
 ## Education / School Geocoding
 
 - NCES EDGE public school locations 2024-25: https://nces.ed.gov/programs/edge/data/EDGE_GEOCODE_PUBLICSCH_2425.zip
   - Public school location snapshot used to canonicalize and geocode U.S. public high schools.
   - Data.gov metadata for this layer states the file is in the public domain.
+- College Scorecard most-recent institution file: https://collegescorecard.ed.gov/data/
+  - Used to canonicalize and geocode college and university associations.
+
+## Geography
+
+- U.S. Census Gazetteer 2025 place file: https://www.census.gov/geographies/reference-files/time-series/geo/gazetteer-files.html
+  - Used for U.S. place centroids.
+- GeoNames `cities500`, `admin1CodesASCII`, and `countryInfo` dumps: https://download.geonames.org/export/dump/
+  - Used for non-U.S. MLB birthplace centroids.
+  - GeoNames data is licensed CC BY 4.0.
 
 ## Wikidata
 
@@ -52,19 +66,37 @@ Acquired on 2026-06-24.
 - Wikidata SPARQL stadium responses: data/raw/wikidata/stadiums/
   - Cached responses for stadium coordinates (`P625`) used by schedule-derived NFL home venues.
   - Wikidata structured data is published under CC0.
+- Wikidata image-candidate responses: data/raw/wikidata/media/
+  - Cached responses for player image-file candidates.
+  - Wikidata structured data is published under CC0.
 
 ## Wikipedia
 
 - Cached Wikipedia lead-section responses:
   - `data/raw/wikipedia/nfl_honors/`
   - `data/raw/wikipedia/nba_honors/`
+  - `data/raw/wikipedia/player_media/`
 - Used to parse infobox career highlights for All-Star/Pro Bowl and All-Pro/All-NBA counts.
 - Wikipedia text is licensed under CC BY-SA; derived counts should carry attribution in public-facing exports or app documentation.
+
+## Wikimedia Commons
+
+- Cached Commons image metadata: data/raw/wikimedia_commons/
+  - Used to retrieve thumbnail URLs, source page URLs, author/attribution text, and per-file license metadata for player photos.
+  - Public player cards should display the cached attribution and license fields when a thumbnail is shown.
+
+## Map / Visualizer
+
+- Leaflet: https://leafletjs.com/
+- OpenStreetMap tiles/data: https://www.openstreetmap.org/copyright
+- CARTO dark basemap tiles: https://carto.com/basemaps/
+- Nominatim typed-place geocoding: https://nominatim.org/
 
 ## Notes
 
 - These are raw source snapshots only.
 - No Sports Reference page crawl has been attempted.
+- Public app surfaces should link to the root `ATTRIBUTIONS.md`.
 - Before public redistribution, review each upstream source's license and terms.
 
 ## Snapshot Inventory

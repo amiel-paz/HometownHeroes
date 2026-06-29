@@ -10,6 +10,7 @@ architecture. Treat this as a playable prototype, not the final frontend.
 from __future__ import annotations
 
 import argparse
+import html as html_lib
 import json
 import math
 import sqlite3
@@ -23,6 +24,7 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 DB_PATH = ROOT / "scratch" / "hometown_heroes.sqlite"
 GEOCODE_CACHE = ROOT / "scratch" / "place_geocode_cache.sqlite"
+ATTRIBUTIONS_PATH = ROOT / "ATTRIBUTIONS.md"
 
 EVENT_TYPE_GROUPS = {
     "birthplace": ["born"],
@@ -417,6 +419,47 @@ def clean_number(value: Any) -> Any:
             return None
         return round(value, 4)
     return value
+
+
+def render_text_page(title: str, text: str) -> bytes:
+    escaped_title = html_lib.escape(title)
+    escaped_text = html_lib.escape(text)
+    return f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{escaped_title}</title>
+  <style>
+    body {{
+      margin: 0;
+      padding: 32px;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #172033;
+      background: #f7f9fc;
+    }}
+    main {{
+      max-width: 880px;
+      margin: 0 auto;
+      background: #fff;
+      border: 1px solid #e3e7ee;
+      border-radius: 8px;
+      padding: 24px;
+    }}
+    pre {{
+      white-space: pre-wrap;
+      font: inherit;
+      line-height: 1.5;
+      margin: 0;
+    }}
+    a {{ color: #1663d6; }}
+  </style>
+</head>
+<body>
+  <main><pre>{escaped_text}</pre></main>
+</body>
+</html>
+""".encode("utf-8")
 
 
 def build_response(query: dict[str, Any]) -> dict[str, Any]:
@@ -1001,6 +1044,13 @@ HTML = r"""
     .photo-credit a {
       color: var(--muted);
     }
+    .source-link {
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 750;
+      text-decoration: none;
+      white-space: nowrap;
+    }
     main {
       position: relative;
       min-width: 0;
@@ -1153,6 +1203,7 @@ HTML = r"""
           <span id="resultsSubtitle">Run a query to populate the side list.</span>
         </div>
         <div class="results-actions">
+          <a class="source-link" href="/attributions" target="_blank" rel="noreferrer">Attributions</a>
           <button id="clearLocationFilter" class="link" title="Show players from all map points">All dots</button>
           <button id="showPlayers" class="primary" title="Jump to player list">Players</button>
         </div>
@@ -1712,6 +1763,10 @@ class Handler(BaseHTTPRequestHandler):
                 .replace("__EVENT_LABELS__", json.dumps(EVENT_LABELS))
             )
             self._send(200, html.encode("utf-8"), "text/html; charset=utf-8")
+            return
+        if path == "/attributions":
+            text = ATTRIBUTIONS_PATH.read_text(encoding="utf-8")
+            self._send(200, render_text_page("Hometown Heroes Attributions", text), "text/html; charset=utf-8")
             return
         if path == "/api/status":
             with connect() as con:
