@@ -21,6 +21,16 @@ Acquired on 2026-06-24.
 - nflverse / Lee Sharpe schedules: https://raw.githubusercontent.com/nflverse/nfldata/master/data/games.csv
   - Used for schedule-derived team-season home stadiums from 1999 onward.
 
+## NBA
+
+- hoopR NBA data: https://github.com/sportsdataverse/hoopR-nba-data
+  - Repository license: CC BY 4.0.
+  - Used snapshots:
+    - `nba/player_season_stats/parquet/`: player/team season stats from 2002-current.
+    - `nba/schedules/parquet/`: schedule rows with home venue name, city, and state.
+    - `nba/rosters/parquet/`: current/recent roster rows with birthplace fields.
+  - NBA pro location rows are player/team season associations joined to the team's schedule-derived home venue city centroid.
+
 ## Education / School Geocoding
 
 - NCES EDGE public school locations 2024-25: https://nces.ed.gov/programs/edge/data/EDGE_GEOCODE_PUBLICSCH_2425.zip
@@ -35,9 +45,21 @@ Acquired on 2026-06-24.
 - Wikidata SPARQL birthplace responses: data/raw/wikidata/birthplace/
   - Cached responses for `P19` place-of-birth associations.
   - Wikidata structured data is published under CC0.
+- Wikidata SPARQL honors responses: data/raw/wikidata/honors/
+  - Cached responses for HOF identifiers and English Wikipedia title maps.
+  - Includes NFL `P6930` and NBA `P3646` HOF identifiers.
+  - Wikidata structured data is published under CC0.
 - Wikidata SPARQL stadium responses: data/raw/wikidata/stadiums/
   - Cached responses for stadium coordinates (`P625`) used by schedule-derived NFL home venues.
   - Wikidata structured data is published under CC0.
+
+## Wikipedia
+
+- Cached Wikipedia lead-section responses:
+  - `data/raw/wikipedia/nfl_honors/`
+  - `data/raw/wikipedia/nba_honors/`
+- Used to parse infobox career highlights for All-Star/Pro Bowl and All-Pro/All-NBA counts.
+- Wikipedia text is licensed under CC BY-SA; derived counts should carry attribution in public-facing exports or app documentation.
 
 ## Notes
 

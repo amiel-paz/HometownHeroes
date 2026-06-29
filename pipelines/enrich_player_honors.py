@@ -26,9 +26,10 @@ from urllib.error import HTTPError, URLError
 ROOT = Path(__file__).resolve().parents[1]
 SCRATCH = ROOT / "scratch"
 RAW_WIKIDATA = ROOT / "data/raw/wikidata/honors"
-RAW_WIKIPEDIA = ROOT / "data/raw/wikipedia/nfl_honors"
+RAW_WIKIPEDIA_ROOT = ROOT / "data/raw/wikipedia"
 LAHMAN_DATA = ROOT / "data/raw/mlb/lahman-cran-14.0-0/extracted/Lahman/data"
 NFL_PLAYERS_CSV = ROOT / "data/raw/nfl/nflverse-players-2026-06-24/players.csv"
+NBA_DB = SCRATCH / "nba_enrichment.sqlite"
 DB_PATH = SCRATCH / "player_honors.sqlite"
 SUMMARY_PATH = SCRATCH / "player_honors_summary.json"
 
@@ -101,6 +102,31 @@ def load_nfl_pfr_ids() -> list[dict[str, str]]:
     return rows
 
 
+def load_nba_espn_ids() -> list[dict[str, str]]:
+    if not NBA_DB.exists():
+        log(f"NBA cache missing: {NBA_DB}")
+        return []
+    con = sqlite3.connect(NBA_DB)
+    rows = [
+        {
+            "sport": "NBA",
+            "source_player_id": str(row[0]),
+            "external_property": "P3685",
+            "external_id": str(row[0]),
+        }
+        for row in con.execute(
+            """
+            select athlete_id
+            from nba_players
+            where athlete_id is not null and athlete_id != ''
+            order by athlete_id
+            """
+        ).fetchall()
+    ]
+    con.close()
+    return rows
+
+
 def chunks(rows: list[dict[str, str]], size: int) -> list[list[dict[str, str]]]:
     return [rows[i : i + size] for i in range(0, len(rows), size)]
 
@@ -154,6 +180,18 @@ SELECT ?pfr ?person ?personLabel ?hofId WHERE {{
 """
 
 
+def nba_hof_query(external_ids: list[str]) -> str:
+    values = " ".join(json.dumps(v) for v in external_ids)
+    return f"""
+SELECT ?espn ?person ?personLabel ?hofId WHERE {{
+  VALUES ?espn {{ {values} }}
+  ?person wdt:P3685 ?espn ;
+          wdt:P3646 ?hofId .
+  SERVICE wikibase:label {{ bd:serviceParam wikibase:language "en". }}
+}}
+"""
+
+
 def nfl_enwiki_title_query(external_ids: list[str]) -> str:
     values = " ".join(json.dumps(v) for v in external_ids)
     return f"""
@@ -167,6 +205,25 @@ SELECT ?pfr ?person ?personLabel ?article WHERE {{
   SERVICE wikibase:label {{ bd:serviceParam wikibase:language "en". }}
 }}
 """
+
+
+def nba_enwiki_title_query(external_ids: list[str]) -> str:
+    values = " ".join(json.dumps(v) for v in external_ids)
+    return f"""
+SELECT ?espn ?person ?personLabel ?article WHERE {{
+  VALUES ?espn {{ {values} }}
+  ?person wdt:P3685 ?espn .
+  OPTIONAL {{
+    ?article schema:about ?person ;
+             schema:isPartOf <https://en.wikipedia.org/> .
+  }}
+  SERVICE wikibase:label {{ bd:serviceParam wikibase:language "en". }}
+}}
+"""
+
+
+def wikipedia_cache_dir(sport: str) -> Path:
+    return RAW_WIKIPEDIA_ROOT / f"{sport.lower()}_honors"
 
 
 def init_db(reset: bool) -> sqlite3.Connection:
@@ -365,6 +422,46 @@ def process_nfl_hof_bindings(con: sqlite3.Connection, source_rows: list[dict[str
     return len(out)
 
 
+def process_nba_hof_bindings(con: sqlite3.Connection, source_rows: list[dict[str, str]], data: dict, cache_path: Path) -> int:
+    by_external = {row["external_id"]: row for row in source_rows}
+    out = []
+    for binding in data.get("results", {}).get("bindings", []):
+        external_id = binding.get("espn", {}).get("value", "")
+        source = by_external.get(external_id)
+        if not source:
+            continue
+        person_qid = qid_from_url(binding.get("person", {}).get("value"))
+        hof_id = binding.get("hofId", {}).get("value", "")
+        out.append(
+            {
+                "sport": "NBA",
+                "source_player_id": source["source_player_id"],
+                "honor_type": "hall_of_fame",
+                "honor_label": "Naismith Memorial Basketball Hall of Fame",
+                "honor_year": None,
+                "source": "Wikidata P3646 Naismith Memorial Basketball Hall of Fame ID",
+                "source_key": hof_id,
+                "raw_cache_path": repo_path(cache_path),
+                "wikidata_qid": person_qid,
+                "external_property": source["external_property"],
+                "external_id": source["external_id"],
+            }
+        )
+    con.executemany(
+        """
+        insert or replace into player_honor_events
+        (sport, source_player_id, honor_type, honor_label, honor_year, source, source_key,
+         raw_cache_path, wikidata_qid, external_property, external_id)
+        values
+        (:sport, :source_player_id, :honor_type, :honor_label, :honor_year, :source, :source_key,
+         :raw_cache_path, :wikidata_qid, :external_property, :external_id)
+        """,
+        out,
+    )
+    con.commit()
+    return len(out)
+
+
 def fetch_nfl_hof(con: sqlite3.Connection, rows: list[dict[str, str]], chunk_size: int, max_chunks: int | None, sleep_seconds: float) -> None:
     RAW_WIKIDATA.mkdir(parents=True, exist_ok=True)
     grouped = chunks(rows, chunk_size)
@@ -414,6 +511,55 @@ def fetch_nfl_hof(con: sqlite3.Connection, rows: list[dict[str, str]], chunk_siz
         time.sleep(sleep_seconds)
 
 
+def fetch_nba_hof(con: sqlite3.Connection, rows: list[dict[str, str]], chunk_size: int, max_chunks: int | None, sleep_seconds: float) -> None:
+    RAW_WIKIDATA.mkdir(parents=True, exist_ok=True)
+    grouped = chunks(rows, chunk_size)
+    processed = 0
+    for chunk_index, chunk_rows in enumerate(grouped):
+        if max_chunks is not None and processed >= max_chunks:
+            break
+        cache_path = RAW_WIKIDATA / f"nba_hof_chunk_{chunk_index:05d}.json"
+        cached = existing_chunk(con, "NBA", chunk_index)
+        if cached and cache_path.exists():
+            processed += 1
+            continue
+        ids = [row["external_id"] for row in chunk_rows if row["external_id"]]
+        if not ids:
+            processed += 1
+            continue
+        log(f"fetching NBA HOF chunk {chunk_index + 1}/{len(grouped)} ({len(ids)} ids)")
+        try:
+            if cache_path.exists():
+                data = json.loads(cache_path.read_text())
+            else:
+                data = sparql_request(nba_hof_query(ids))
+                cache_path.write_text(json.dumps(data))
+            row_count = process_nba_hof_bindings(con, chunk_rows, data, cache_path)
+            con.execute(
+                """
+                insert or replace into wikidata_fetch_chunks
+                (sport, chunk_index, cache_path, row_count, status)
+                values (?, ?, ?, ?, 'ok')
+                """,
+                ("NBA", chunk_index, repo_path(cache_path), row_count),
+            )
+            con.commit()
+            log(f"  cached {row_count} NBA HOF rows")
+        except Exception as exc:
+            con.execute(
+                """
+                insert or replace into wikidata_fetch_chunks
+                (sport, chunk_index, cache_path, row_count, status)
+                values (?, ?, ?, 0, ?)
+                """,
+                ("NBA", chunk_index, repo_path(cache_path), f"error:{type(exc).__name__}:{exc}"),
+            )
+            con.commit()
+            log(f"  error: {type(exc).__name__}: {exc}")
+        processed += 1
+        time.sleep(sleep_seconds)
+
+
 def existing_title_chunk(con: sqlite3.Connection, sport: str, chunk_index: int) -> str | None:
     row = con.execute(
         "select cache_path from wikidata_enwiki_title_chunks where sport=? and chunk_index=? and status='ok'",
@@ -422,11 +568,11 @@ def existing_title_chunk(con: sqlite3.Connection, sport: str, chunk_index: int) 
     return row[0] if row else None
 
 
-def process_title_bindings(con: sqlite3.Connection, source_rows: list[dict[str, str]], data: dict, cache_path: Path) -> int:
+def process_title_bindings(con: sqlite3.Connection, sport: str, source_rows: list[dict[str, str]], data: dict, cache_path: Path) -> int:
     by_external = {row["external_id"]: row for row in source_rows}
     out = []
     for binding in data.get("results", {}).get("bindings", []):
-        external_id = binding.get("pfr", {}).get("value", "")
+        external_id = binding.get("pfr", {}).get("value", "") or binding.get("espn", {}).get("value", "")
         source = by_external.get(external_id)
         if not source:
             continue
@@ -434,7 +580,7 @@ def process_title_bindings(con: sqlite3.Connection, source_rows: list[dict[str, 
         article_title = urllib.parse.unquote(article_url.rsplit("/", 1)[-1]).replace("_", " ") if article_url else ""
         out.append(
             {
-                "sport": "NFL",
+                "sport": sport,
                 "source_player_id": source["source_player_id"],
                 "wikidata_qid": qid_from_url(binding.get("person", {}).get("value")),
                 "person_label": binding.get("personLabel", {}).get("value", ""),
@@ -486,7 +632,7 @@ def fetch_nfl_enwiki_titles(
             else:
                 data = sparql_request(nfl_enwiki_title_query(ids))
                 cache_path.write_text(json.dumps(data))
-            row_count = process_title_bindings(con, chunk_rows, data, cache_path)
+            row_count = process_title_bindings(con, "NFL", chunk_rows, data, cache_path)
             con.execute(
                 """
                 insert or replace into wikidata_enwiki_title_chunks
@@ -505,6 +651,61 @@ def fetch_nfl_enwiki_titles(
                 values (?, ?, ?, 0, ?)
                 """,
                 ("NFL", chunk_index, repo_path(cache_path), f"error:{type(exc).__name__}:{exc}"),
+            )
+            con.commit()
+            log(f"  error: {type(exc).__name__}: {exc}")
+        processed += 1
+        time.sleep(sleep_seconds)
+
+
+def fetch_nba_enwiki_titles(
+    con: sqlite3.Connection,
+    rows: list[dict[str, str]],
+    chunk_size: int,
+    max_chunks: int | None,
+    sleep_seconds: float,
+) -> None:
+    RAW_WIKIDATA.mkdir(parents=True, exist_ok=True)
+    grouped = chunks(rows, chunk_size)
+    processed = 0
+    for chunk_index, chunk_rows in enumerate(grouped):
+        if max_chunks is not None and processed >= max_chunks:
+            break
+        cache_path = RAW_WIKIDATA / f"nba_enwiki_titles_chunk_{chunk_index:05d}.json"
+        cached = existing_title_chunk(con, "NBA", chunk_index)
+        if cached and cache_path.exists():
+            processed += 1
+            continue
+        ids = [row["external_id"] for row in chunk_rows if row["external_id"]]
+        if not ids:
+            processed += 1
+            continue
+        log(f"fetching NBA enwiki title chunk {chunk_index + 1}/{len(grouped)} ({len(ids)} ids)")
+        try:
+            if cache_path.exists():
+                data = json.loads(cache_path.read_text())
+            else:
+                data = sparql_request(nba_enwiki_title_query(ids))
+                cache_path.write_text(json.dumps(data))
+            row_count = process_title_bindings(con, "NBA", chunk_rows, data, cache_path)
+            con.execute(
+                """
+                insert or replace into wikidata_enwiki_title_chunks
+                (sport, chunk_index, cache_path, row_count, status)
+                values (?, ?, ?, ?, 'ok')
+                """,
+                ("NBA", chunk_index, repo_path(cache_path), row_count),
+            )
+            con.commit()
+            log(f"  cached {row_count} title rows")
+        except Exception as exc:
+            con.execute(
+                """
+                insert or replace into wikidata_enwiki_title_chunks
+                (sport, chunk_index, cache_path, row_count, status)
+                values (?, ?, ?, 0, ?)
+                """,
+                ("NBA", chunk_index, repo_path(cache_path), f"error:{type(exc).__name__}:{exc}"),
             )
             con.commit()
             log(f"  error: {type(exc).__name__}: {exc}")
@@ -593,6 +794,7 @@ def extract_highlights(wikitext: str) -> str:
             "infobox gridiron football biography",
             "infobox gridiron football person",
             "infobox canadian football biography",
+            "infobox basketball biography",
         ),
     )
     if not template:
@@ -606,7 +808,11 @@ def extract_highlights(wikitext: str) -> str:
             capture = True
             collected.append(re.sub(r"^\|\s*highlights\s*=\s*", "", line, flags=re.IGNORECASE))
             continue
-        if capture and re.match(r"^\|\s*(stat|pfr|nfl|cfl|module|espn|si|databasefootball|status|pastteams)\b", line, flags=re.IGNORECASE):
+        if capture and re.match(
+            r"^\|\s*(stat|pfr|nfl|cfl|module|espn|si|databasefootball|status|pastteams|bbr|hof|medal)\b",
+            line,
+            flags=re.IGNORECASE,
+        ):
             break
         if capture:
             collected.append(line)
@@ -617,6 +823,12 @@ def display_wikitext(value: str) -> str:
     value = re.sub(r"<ref[^>/]*/>", "", value, flags=re.IGNORECASE)
     value = re.sub(r"<ref[^>]*>.*?</ref>", "", value, flags=re.IGNORECASE | re.DOTALL)
     value = re.sub(r"\{\{\s*nfly\s*\|\s*(\d{4})\s*\}\}", r"\1", value, flags=re.IGNORECASE)
+    value = re.sub(r"\{\{\s*nbay\s*\|\s*(\d{4})\s*\|\s*end\s*\}\}", r"\1", value, flags=re.IGNORECASE)
+    value = re.sub(r"\{\{\s*nbay\s*\|\s*(\d{4})\s*\}\}", r"\1", value, flags=re.IGNORECASE)
+    value = re.sub(r"\{\{\s*nbafy\s*\|\s*(\d{4})\s*\}\}", r"\1", value, flags=re.IGNORECASE)
+    value = re.sub(r"\{\{\s*nasg\s*\|\s*(\d{4})\s*\}\}", r"\1", value, flags=re.IGNORECASE)
+    value = re.sub(r"\{\{\s*nowrap\s*\|\s*([^{}|]+)\s*\}\}", r"\1", value, flags=re.IGNORECASE)
+    value = re.sub(r"\{\{\s*abbr\s*\|\s*([^{}|]+)\s*\|[^{}]*\}\}", r"\1", value, flags=re.IGNORECASE)
     value = re.sub(r"\{\{[^{}]*\}\}", "", value)
     value = re.sub(r"\[\[[^\]|]*\|([^\]]+)\]\]", r"\1", value)
     value = re.sub(r"\[\[([^\]]+)\]\]", r"\1", value)
@@ -651,7 +863,7 @@ def line_count(value: str, years: list[int]) -> int:
     return max(1, len(years))
 
 
-def parse_wikipedia_honor_events(source: dict[str, str], wikitext: str, cache_path: Path) -> list[dict[str, object]]:
+def parse_wikipedia_honor_events(sport: str, source: dict[str, str], wikitext: str, cache_path: Path) -> list[dict[str, object]]:
     highlights = extract_highlights(wikitext)
     if not highlights:
         return []
@@ -664,10 +876,10 @@ def parse_wikipedia_honor_events(source: dict[str, str], wikitext: str, cache_pa
             continue
         line = display_wikitext(stripped.lstrip("*").strip())
         lower = line.lower()
-        if "pro bowl" in lower:
+        if sport == "NFL" and "pro bowl" in lower:
             honor_type = "all_star"
             honor_label = "NFL Pro Bowl"
-        elif "all-pro" in lower:
+        elif sport == "NFL" and "all-pro" in lower:
             honor_type = "all_pro"
             if "first-team" in lower:
                 honor_label = "NFL First-team All-Pro"
@@ -675,6 +887,19 @@ def parse_wikipedia_honor_events(source: dict[str, str], wikitext: str, cache_pa
                 honor_label = "NFL Second-team All-Pro"
             else:
                 honor_label = "NFL All-Pro"
+        elif sport == "NBA" and "all-nba" in lower:
+            honor_type = "all_pro"
+            if "first team" in lower or "first-team" in lower:
+                honor_label = "All-NBA First Team"
+            elif "second team" in lower or "second-team" in lower:
+                honor_label = "All-NBA Second Team"
+            elif "third team" in lower or "third-team" in lower:
+                honor_label = "All-NBA Third Team"
+            else:
+                honor_label = "All-NBA Team"
+        elif sport == "NBA" and "all-star" in lower and "all-star game mvp" not in lower:
+            honor_type = "all_star"
+            honor_label = "NBA All-Star"
         else:
             continue
 
@@ -686,7 +911,7 @@ def parse_wikipedia_honor_events(source: dict[str, str], wikitext: str, cache_pa
             year = years[index] if index < len(years) else None
             rows.append(
                 {
-                    "sport": "NFL",
+                    "sport": sport,
                     "source_player_id": source["source_player_id"],
                     "honor_type": honor_type,
                     "honor_label": honor_label,
@@ -714,7 +939,7 @@ def title_key(value: str) -> str:
     return value.replace("_", " ").strip().casefold()
 
 
-def process_wikipedia_pages(con: sqlite3.Connection, source_rows: list[dict[str, str]], data: dict, cache_path: Path) -> tuple[int, int]:
+def process_wikipedia_pages(con: sqlite3.Connection, sport: str, source_rows: list[dict[str, str]], data: dict, cache_path: Path) -> tuple[int, int]:
     by_title: dict[str, list[dict[str, str]]] = {}
     for row in source_rows:
         by_title.setdefault(title_key(row["article_title"]), []).append(row)
@@ -738,7 +963,7 @@ def process_wikipedia_pages(con: sqlite3.Connection, source_rows: list[dict[str,
             continue
         page_count += 1
         for source in sources:
-            out.extend(parse_wikipedia_honor_events(source, content, cache_path))
+            out.extend(parse_wikipedia_honor_events(sport, source, content, cache_path))
 
     con.executemany(
         """
@@ -755,13 +980,15 @@ def process_wikipedia_pages(con: sqlite3.Connection, source_rows: list[dict[str,
     return page_count, len(out)
 
 
-def fetch_nfl_wikipedia_honors(
+def fetch_wikipedia_honors(
     con: sqlite3.Connection,
+    sport: str,
     chunk_size: int,
     max_chunks: int | None,
     sleep_seconds: float,
 ) -> None:
-    RAW_WIKIPEDIA.mkdir(parents=True, exist_ok=True)
+    raw_wikipedia = wikipedia_cache_dir(sport)
+    raw_wikipedia.mkdir(parents=True, exist_ok=True)
     rows = [
         {
             "source_player_id": row[0],
@@ -774,9 +1001,11 @@ def fetch_nfl_wikipedia_honors(
             """
             select source_player_id, wikidata_qid, external_property, external_id, article_title
             from nfl_wikipedia_title_map
-            where article_title is not null and article_title != ''
+            where sport = ?
+              and article_title is not null and article_title != ''
             order by article_title, source_player_id
-            """
+            """,
+            (sport,),
         ).fetchall()
     ]
     grouped = chunks(rows, chunk_size)
@@ -784,8 +1013,8 @@ def fetch_nfl_wikipedia_honors(
     for chunk_index, chunk_rows in enumerate(grouped):
         if max_chunks is not None and processed >= max_chunks:
             break
-        cache_path = RAW_WIKIPEDIA / f"nfl_honors_pages_chunk_{chunk_index:05d}.json"
-        cached = existing_wikipedia_chunk(con, "NFL", chunk_index)
+        cache_path = raw_wikipedia / f"{sport.lower()}_honors_pages_chunk_{chunk_index:05d}.json"
+        cached = existing_wikipedia_chunk(con, sport, chunk_index)
         if cached and cache_path.exists():
             processed += 1
             continue
@@ -793,21 +1022,21 @@ def fetch_nfl_wikipedia_honors(
         if not titles:
             processed += 1
             continue
-        log(f"fetching NFL Wikipedia honors page chunk {chunk_index + 1}/{len(grouped)} ({len(titles)} titles)")
+        log(f"fetching {sport} Wikipedia honors page chunk {chunk_index + 1}/{len(grouped)} ({len(titles)} titles)")
         try:
             if cache_path.exists():
                 data = json.loads(cache_path.read_text())
             else:
                 data = wikipedia_request(titles)
                 cache_path.write_text(json.dumps(data))
-            page_count, event_count = process_wikipedia_pages(con, chunk_rows, data, cache_path)
+            page_count, event_count = process_wikipedia_pages(con, sport, chunk_rows, data, cache_path)
             con.execute(
                 """
                 insert or replace into wikipedia_fetch_chunks
                 (sport, chunk_index, cache_path, page_count, honor_event_count, status)
                 values (?, ?, ?, ?, ?, 'ok')
                 """,
-                ("NFL", chunk_index, repo_path(cache_path), page_count, event_count),
+                (sport, chunk_index, repo_path(cache_path), page_count, event_count),
             )
             con.commit()
             log(f"  parsed {event_count} honor rows from {page_count} pages")
@@ -818,7 +1047,7 @@ def fetch_nfl_wikipedia_honors(
                 (sport, chunk_index, cache_path, page_count, honor_event_count, status)
                 values (?, ?, ?, 0, 0, ?)
                 """,
-                ("NFL", chunk_index, repo_path(cache_path), f"error:{type(exc).__name__}:{exc}"),
+                (sport, chunk_index, repo_path(cache_path), f"error:{type(exc).__name__}:{exc}"),
             )
             con.commit()
             log(f"  error: {type(exc).__name__}: {exc}")
@@ -906,6 +1135,8 @@ def write_exports(con: sqlite3.Connection) -> dict:
             "MLB hof_inducted is Lahman HallOfFame inducted='Y' and category='Player'.",
             "NFL hof_inducted is Wikidata P6930 presence, keyed by nflverse PFR ID.",
             "NFL all_star_count and all_pro_count are parsed from Wikipedia infobox career highlights when --include-wikipedia-nfl is used.",
+            "NBA hof_inducted is Wikidata P3646 presence, keyed by hoopR ESPN NBA player ID.",
+            "NBA all_star_count and all_pro_count are parsed from Wikipedia infobox career highlights when --include-wikipedia-nba is used; all_pro_count means All-NBA selections for NBA.",
         ],
     }
     SUMMARY_PATH.write_text(json.dumps(summary, indent=2))
@@ -914,13 +1145,14 @@ def write_exports(con: sqlite3.Connection) -> dict:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--sports", default="MLB,NFL", help="Comma-separated sports: MLB,NFL")
+    parser.add_argument("--sports", default="MLB,NFL", help="Comma-separated sports: MLB,NFL,NBA")
     parser.add_argument("--chunk-size", type=int, default=200)
     parser.add_argument("--max-chunks", type=int, default=0, help="NFL chunks to fetch; use 0 for all")
     parser.add_argument("--max-wikipedia-chunks", type=int, default=0, help="Wikipedia page chunks to fetch; use 0 for all")
     parser.add_argument("--wikipedia-chunk-size", type=int, default=50)
     parser.add_argument("--sleep-seconds", type=float, default=0.5)
     parser.add_argument("--include-wikipedia-nfl", action="store_true")
+    parser.add_argument("--include-wikipedia-nba", action="store_true")
     parser.add_argument("--no-reset", action="store_true", help="Keep existing cache tables and append/replace rows")
     args = parser.parse_args()
 
@@ -936,7 +1168,13 @@ def main() -> None:
         fetch_nfl_hof(con, nfl_rows, args.chunk_size, max_chunks, args.sleep_seconds)
         if args.include_wikipedia_nfl:
             fetch_nfl_enwiki_titles(con, nfl_rows, args.chunk_size, max_chunks, args.sleep_seconds)
-            fetch_nfl_wikipedia_honors(con, args.wikipedia_chunk_size, max_wikipedia_chunks, args.sleep_seconds)
+            fetch_wikipedia_honors(con, "NFL", args.wikipedia_chunk_size, max_wikipedia_chunks, args.sleep_seconds)
+    if "NBA" in sports:
+        nba_rows = load_nba_espn_ids()
+        fetch_nba_hof(con, nba_rows, args.chunk_size, max_chunks, args.sleep_seconds)
+        if args.include_wikipedia_nba:
+            fetch_nba_enwiki_titles(con, nba_rows, args.chunk_size, max_chunks, args.sleep_seconds)
+            fetch_wikipedia_honors(con, "NBA", args.wikipedia_chunk_size, max_wikipedia_chunks, args.sleep_seconds)
     rebuild_summary(con)
     summary = write_exports(con)
     con.close()

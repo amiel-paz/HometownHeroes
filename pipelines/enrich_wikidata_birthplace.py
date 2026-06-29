@@ -25,6 +25,7 @@ SCRATCH = ROOT / "scratch"
 RAW_WIKIDATA = ROOT / "data/raw/wikidata/birthplace"
 CHADWICK_DATA = ROOT / "data/raw/mlb/chadwick-register-master/extracted/register-master/data"
 NFL_PLAYERS_CSV = ROOT / "data/raw/nfl/nflverse-players-2026-06-24/players.csv"
+NBA_DB = SCRATCH / "nba_enrichment.sqlite"
 DB_PATH = SCRATCH / "wikidata_birthplace_enrichment.sqlite"
 SUMMARY_PATH = SCRATCH / "wikidata_birthplace_summary.json"
 
@@ -34,6 +35,10 @@ USER_AGENT = "HometownHeroesPipeline/0.1 (CC0 structured data)"
 
 def log(message: str) -> None:
     print(message, flush=True)
+
+
+def repo_path(path: Path) -> str:
+    return path.resolve().relative_to(ROOT).as_posix()
 
 
 def qid_from_url(value: str | None) -> str | None:
@@ -107,6 +112,32 @@ def load_nfl_pfr_ids() -> list[dict[str, str]]:
     return rows
 
 
+def load_nba_espn_ids() -> list[dict[str, str]]:
+    if not NBA_DB.exists():
+        log(f"NBA cache missing: {NBA_DB}")
+        return []
+    con = sqlite3.connect(NBA_DB)
+    rows = [
+        {
+            "sport": "NBA",
+            "source_player_id": str(row[0]),
+            "wikidata_qid": "",
+            "external_property": "P3685",
+            "external_id": str(row[0]),
+        }
+        for row in con.execute(
+            """
+            select athlete_id
+            from nba_players
+            where athlete_id is not null and athlete_id != ''
+            order by athlete_id
+            """
+        ).fetchall()
+    ]
+    con.close()
+    return rows
+
+
 def chunks(rows: list[dict[str, str]], size: int) -> list[list[dict[str, str]]]:
     return [rows[i : i + size] for i in range(0, len(rows), size)]
 
@@ -168,6 +199,21 @@ def nfl_query(external_ids: list[str]) -> str:
 SELECT ?pfr ?person ?personLabel ?birthplace ?birthplaceLabel ?coord ?locatedInLabel ?countryLabel WHERE {{
   VALUES ?pfr {{ {values} }}
   ?person wdt:P3561 ?pfr ;
+          wdt:P19 ?birthplace .
+  OPTIONAL {{ ?birthplace wdt:P625 ?coord . }}
+  OPTIONAL {{ ?birthplace wdt:P131 ?locatedIn . }}
+  OPTIONAL {{ ?birthplace wdt:P17 ?country . }}
+  SERVICE wikibase:label {{ bd:serviceParam wikibase:language "en". }}
+}}
+"""
+
+
+def nba_query(external_ids: list[str]) -> str:
+    values = " ".join(json.dumps(v) for v in external_ids)
+    return f"""
+SELECT ?espn ?person ?personLabel ?birthplace ?birthplaceLabel ?coord ?locatedInLabel ?countryLabel WHERE {{
+  VALUES ?espn {{ {values} }}
+  ?person wdt:P3685 ?espn ;
           wdt:P19 ?birthplace .
   OPTIONAL {{ ?birthplace wdt:P625 ?coord . }}
   OPTIONAL {{ ?birthplace wdt:P131 ?locatedIn . }}
@@ -249,8 +295,13 @@ def process_bindings(con: sqlite3.Connection, sport: str, source_rows: list[dict
     out = []
     for binding in data.get("results", {}).get("bindings", []):
         person_qid = qid_from_url(binding.get("person", {}).get("value"))
-        external_id = binding.get("pfr", {}).get("value", "")
-        source = by_external.get(("P3561", external_id)) if sport == "NFL" else by_qid.get(person_qid or "")
+        if sport == "MLB":
+            source = by_qid.get(person_qid or "")
+            external_id = ""
+        else:
+            external_id = binding.get("pfr", {}).get("value", "") or binding.get("espn", {}).get("value", "")
+            external_property = "P3561" if sport == "NFL" else "P3685"
+            source = by_external.get((external_property, external_id))
         if not source or not person_qid:
             continue
         birthplace_qid = qid_from_url(binding.get("birthplace", {}).get("value"))
@@ -269,7 +320,7 @@ def process_bindings(con: sqlite3.Connection, sport: str, source_rows: list[dict
                 "country_label": binding.get("countryLabel", {}).get("value", ""),
                 "latitude": lat,
                 "longitude": lon,
-                "raw_cache_path": str(cache_path),
+                "raw_cache_path": repo_path(cache_path),
             }
         )
     con.executemany(
@@ -303,9 +354,12 @@ def fetch_sport(con: sqlite3.Connection, sport: str, rows: list[dict[str, str]],
         if sport == "MLB":
             ids = [row["wikidata_qid"] for row in chunk_rows if row["wikidata_qid"]]
             query = mlb_query(ids)
-        else:
+        elif sport == "NFL":
             ids = [row["external_id"] for row in chunk_rows if row["external_id"]]
             query = nfl_query(ids)
+        else:
+            ids = [row["external_id"] for row in chunk_rows if row["external_id"]]
+            query = nba_query(ids)
         if not ids:
             continue
         log(f"fetching {sport} chunk {chunk_index + 1}/{len(grouped)} ({len(ids)} ids)")
@@ -319,7 +373,7 @@ def fetch_sport(con: sqlite3.Connection, sport: str, rows: list[dict[str, str]],
                 (sport, chunk_index, cache_path, row_count, status)
                 values (?, ?, ?, ?, 'ok')
                 """,
-                (sport, chunk_index, str(cache_path), event_count),
+                (sport, chunk_index, repo_path(cache_path), event_count),
             )
             con.commit()
             log(f"  cached {event_count} birthplace rows")
@@ -330,7 +384,7 @@ def fetch_sport(con: sqlite3.Connection, sport: str, rows: list[dict[str, str]],
                 (sport, chunk_index, cache_path, row_count, status)
                 values (?, ?, ?, 0, ?)
                 """,
-                (sport, chunk_index, str(cache_path), f"error:{type(exc).__name__}:{exc}"),
+                (sport, chunk_index, repo_path(cache_path), f"error:{type(exc).__name__}:{exc}"),
             )
             con.commit()
             log(f"  error: {type(exc).__name__}: {exc}")
@@ -356,7 +410,7 @@ def write_exports(con: sqlite3.Connection) -> dict:
         export_path,
     )
     summary = {
-        "sqlite_cache": str(DB_PATH),
+        "sqlite_cache": repo_path(DB_PATH),
         "birthplace_events": con.execute("select count(*) from wikidata_birthplace_events").fetchone()[0],
         "events_with_coordinates": con.execute(
             "select count(*) from wikidata_birthplace_events where latitude is not null and longitude is not null"
@@ -365,7 +419,7 @@ def write_exports(con: sqlite3.Connection) -> dict:
         "players_by_sport": dict(
             con.execute("select sport, count(distinct source_player_id) from wikidata_birthplace_events group by sport").fetchall()
         ),
-        "exports": {"all_events": str(export_path)},
+        "exports": {"all_events": repo_path(export_path)},
     }
     SUMMARY_PATH.write_text(json.dumps(summary, indent=2))
     return summary
@@ -373,7 +427,7 @@ def write_exports(con: sqlite3.Connection) -> dict:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--sports", default="NFL", help="Comma-separated sports: MLB,NFL")
+    parser.add_argument("--sports", default="NFL", help="Comma-separated sports: MLB,NFL,NBA")
     parser.add_argument("--chunk-size", type=int, default=200)
     parser.add_argument("--max-chunks", type=int, default=10, help="Chunks per sport for this run; use 0 for all")
     parser.add_argument("--sleep-seconds", type=float, default=0.5)
@@ -391,6 +445,10 @@ def main() -> None:
         rows = load_nfl_pfr_ids()
         insert_source_ids(con, rows)
         fetch_sport(con, "NFL", rows, args.chunk_size, max_chunks, args.sleep_seconds)
+    if "NBA" in sports:
+        rows = load_nba_espn_ids()
+        insert_source_ids(con, rows)
+        fetch_sport(con, "NBA", rows, args.chunk_size, max_chunks, args.sleep_seconds)
 
     summary = write_exports(con)
     con.close()

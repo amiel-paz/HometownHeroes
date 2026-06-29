@@ -56,7 +56,7 @@ DEFAULT_QUERY = {
     "radius_mi": 50,
     "start_year": 1970,
     "end_year": 2026,
-    "sports": ["MLB", "NFL"],
+    "sports": ["MLB", "NFL", "NBA"],
     "groups": [
         {"clauses": [{"kind": "birthplace"}]},
         {"clauses": [{"kind": "high_school"}]},
@@ -252,7 +252,11 @@ def normalize_query(payload: dict[str, Any]) -> dict[str, Any]:
     query["end_year"] = int(query["end_year"])
     if query["start_year"] > query["end_year"]:
         query["start_year"], query["end_year"] = query["end_year"], query["start_year"]
-    query["sports"] = [sport for sport in query.get("sports", []) if sport in {"MLB", "NFL"}] or ["MLB", "NFL"]
+    query["sports"] = [sport for sport in query.get("sports", []) if sport in {"MLB", "NFL", "NBA"}] or [
+        "MLB",
+        "NFL",
+        "NBA",
+    ]
     query["sort"] = str(query.get("sort", "nearest"))
     query["hof_only"] = bool(query.get("hof_only", False))
     query["all_star_only"] = bool(query.get("all_star_only", False))
@@ -496,7 +500,8 @@ def build_response(query: dict[str, Any]) -> dict[str, Any]:
             "qualified_events": len(filtered),
             "data_notes": [
                 "NFL pro rows are roster-season/home-stadium associations for 1999-current.",
-                "MLB All-Star and HOF fields come from Lahman; NFL HOF comes from Wikidata P6930; NFL Pro Bowl and All-Pro counts come from Wikipedia infobox career highlights.",
+                "NBA pro rows are player/team seasons joined to schedule-derived venue city centroids.",
+                "MLB All-Star and HOF fields come from Lahman; NFL and NBA HOF fields come from Wikidata; NFL Pro Bowl/All-Pro and NBA All-Star/All-NBA counts come from Wikipedia infobox career highlights.",
             ],
         },
         "players": player_rows[:1000],
@@ -663,9 +668,30 @@ HTML = r"""
       font-size: 11px;
       font-weight: 600;
     }
+    .filter-row {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .filter-group {
+      display: grid;
+      gap: 7px;
+      align-content: start;
+      padding: 8px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #f8fafc;
+    }
+    .filter-title {
+      font-size: 11px;
+      line-height: 1;
+      color: var(--muted);
+      font-weight: 800;
+      text-transform: uppercase;
+    }
     .checks {
       display: flex;
-      gap: 10px;
+      gap: 8px 10px;
       align-items: center;
       flex-wrap: wrap;
       font-size: 13px;
@@ -678,8 +704,12 @@ HTML = r"""
       font-size: 13px;
       font-weight: 600;
       color: var(--ink);
+      min-height: 20px;
     }
     .checks input { min-height: auto; }
+    @media (max-width: 520px) {
+      .filter-row { grid-template-columns: 1fr; }
+    }
     .query-builder {
       display: grid;
       gap: 8px;
@@ -921,7 +951,7 @@ HTML = r"""
               <option value="year">Year</option>
               <option value="career_length">Career length</option>
               <option value="all_star">All-Star / Pro Bowl</option>
-              <option value="all_pro">All-Pro</option>
+              <option value="all_pro">All-Pro / All-NBA</option>
             </select>
           </label>
         </div>
@@ -933,12 +963,23 @@ HTML = r"""
             <input id="endYear" type="number" value="2026">
           </label>
         </div>
-        <div class="checks">
-          <label><input type="checkbox" id="sportMLB" checked> MLB</label>
-          <label><input type="checkbox" id="sportNFL" checked> NFL</label>
-          <label><input type="checkbox" id="allStarOnly"> All-Star / Pro Bowl</label>
-          <label><input type="checkbox" id="allProOnly"> All-Pro</label>
-          <label><input type="checkbox" id="hofOnly"> HOF only</label>
+        <div class="filter-row">
+          <section class="filter-group" aria-label="Sport filters">
+            <div class="filter-title">Sports</div>
+            <div class="checks">
+              <label><input type="checkbox" id="sportMLB" checked> MLB</label>
+              <label><input type="checkbox" id="sportNFL" checked> NFL</label>
+              <label><input type="checkbox" id="sportNBA" checked> NBA</label>
+            </div>
+          </section>
+          <section class="filter-group" aria-label="Honor filters">
+            <div class="filter-title">Honors</div>
+            <div class="checks">
+              <label><input type="checkbox" id="allStarOnly"> All-Star / Pro Bowl</label>
+              <label><input type="checkbox" id="allProOnly"> All-Pro / All-NBA</label>
+              <label><input type="checkbox" id="hofOnly"> HOF only</label>
+            </div>
+          </section>
         </div>
         <div class="query-builder">
           <div class="row">
@@ -1088,7 +1129,8 @@ HTML = r"""
       const sports = [];
       if (document.getElementById('sportMLB').checked) sports.push('MLB');
       if (document.getElementById('sportNFL').checked) sports.push('NFL');
-      return sports.length ? sports : ['MLB', 'NFL'];
+      if (document.getElementById('sportNBA').checked) sports.push('NBA');
+      return sports.length ? sports : ['MLB', 'NFL', 'NBA'];
     }
 
     function currentQuery() {
@@ -1257,7 +1299,7 @@ HTML = r"""
             <span class="chip">${groupsText}</span>
             ${player.matched_blocks.map(optionLabel).map(label => `<span class="chip">${label}</span>`).join('')}
           </div>
-          <div class="small">${years} · ${career} · All-Star/Pro Bowl ${player.all_star_count} · All-Pro ${player.all_pro_count} · HOF ${hof}</div>
+          <div class="small">${years} · ${career} · All-Star/Pro Bowl ${player.all_star_count} · All-Pro/All-NBA ${player.all_pro_count} · HOF ${hof}</div>
           <div class="small">${player.matched_locations.slice(0, 4).join(' | ')}</div>
         `;
         list.appendChild(item);

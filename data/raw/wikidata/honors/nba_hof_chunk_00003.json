@@ -1,0 +1,1 @@
+{"head": {"vars": ["espn", "person", "personLabel", "hofId"]}, "results": {"bindings": [{"espn": {"type": "literal", "value": "301"}, "person": {"type": "uri", "value": "http://www.wikidata.org/entity/Q352319"}, "hofId": {"type": "literal", "value": "tim-hardaway"}, "personLabel": {"xml:lang": "en", "type": "literal", "value": "Tim Hardaway"}}]}}

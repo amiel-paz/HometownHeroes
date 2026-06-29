@@ -1,0 +1,1 @@
+{"head": {"vars": ["espn", "person", "personLabel", "hofId"]}, "results": {"bindings": [{"espn": {"type": "literal", "value": "429"}, "person": {"type": "uri", "value": "http://www.wikidata.org/entity/Q221341"}, "hofId": {"type": "literal", "value": "jason-kidd"}, "personLabel": {"xml:lang": "en", "type": "literal", "value": "Jason Kidd"}}]}}

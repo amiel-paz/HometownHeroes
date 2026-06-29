@@ -21,6 +21,7 @@ SUMMARY = SCRATCH / "hometown_heroes_sql_summary.json"
 
 MLB_DB = SCRATCH / "mlb_enrichment.sqlite"
 NFL_DB = SCRATCH / "nfl_enrichment.sqlite"
+NBA_DB = SCRATCH / "nba_enrichment.sqlite"
 WIKIDATA_DB = SCRATCH / "wikidata_education_enrichment.sqlite"
 WIKIDATA_BIRTHPLACE_DB = SCRATCH / "wikidata_birthplace_enrichment.sqlite"
 NFL_STADIUM_DB = SCRATCH / "nfl_stadium_enrichment.sqlite"
@@ -134,6 +135,8 @@ def register_functions(con: sqlite3.Connection) -> None:
 def attach_sources(con: sqlite3.Connection) -> None:
     con.execute(f"attach database {sql_quote(str(MLB_DB))} as mlb")
     con.execute(f"attach database {sql_quote(str(NFL_DB))} as nfl")
+    if NBA_DB.exists():
+        con.execute(f"attach database {sql_quote(str(NBA_DB))} as nba")
     con.execute(f"attach database {sql_quote(str(WIKIDATA_DB))} as wd")
     if WIKIDATA_BIRTHPLACE_DB.exists():
         con.execute(f"attach database {sql_quote(str(WIKIDATA_BIRTHPLACE_DB))} as wb")
@@ -177,6 +180,25 @@ def load_players(con: sqlite3.Connection) -> None:
         where coalesce(nullif(gsis_id, ''), nullif(pfr_id, '')) is not null;
         """
     )
+    if NBA_DB.exists():
+        con.executescript(
+            """
+            insert or ignore into players
+            (sport, player_id, display_name, birth_date, birth_year, debut_year, final_year, primary_external_id, source)
+            select
+                'NBA',
+                athlete_id,
+                display_name,
+                nullif(date_of_birth, ''),
+                cast(nullif(birth_year, '') as integer),
+                cast(first_season as integer),
+                cast(last_season as integer),
+                athlete_id,
+                source
+            from nba.nba_players
+            where athlete_id is not null and athlete_id != '';
+            """
+        )
 
 
 def load_locations(con: sqlite3.Connection) -> None:
@@ -274,6 +296,49 @@ def load_locations(con: sqlite3.Connection) -> None:
         where school_qid is not null and school_qid != '';
         """
     )
+    if NBA_DB.exists():
+        con.executescript(
+            """
+            insert or replace into locations
+            (location_id, location_kind, label, city, state, country, latitude, longitude, geocode_status, geocode_source, source, source_key)
+            select
+                stable_id('NBA', 'birthplace', birth_city, birth_state, birth_country),
+                'birthplace',
+                case
+                    when birth_state is not null and birth_state != '' then birth_city || ', ' || birth_state
+                    else birth_city || ', ' || birth_country
+                end,
+                birth_city,
+                birth_state,
+                birth_country,
+                latitude,
+                longitude,
+                geocode_status,
+                'Census Gazetteer place centroid',
+                'hoopR NBA roster birthplace cache',
+                birth_city || '|' || birth_state || '|' || birth_country
+            from nba.nba_birthplace_geocode_cache
+            where birth_city is not null and birth_city != '';
+
+            insert or replace into locations
+            (location_id, location_kind, label, city, state, country, latitude, longitude, geocode_status, geocode_source, source, source_key)
+            select
+                stable_id('NBA', 'pro_venue', venue_id, venue_full_name),
+                'pro_venue',
+                venue_full_name,
+                city,
+                state,
+                country,
+                latitude,
+                longitude,
+                geocode_status,
+                'Census Gazetteer venue city centroid',
+                'hoopR NBA schedules venue city cache',
+                venue_id || '|' || venue_full_name
+            from nba.nba_venue_geocode_cache
+            where venue_id is not null and venue_id != '';
+            """
+        )
     if WIKIDATA_BIRTHPLACE_DB.exists():
         con.executescript(
             """
@@ -428,6 +493,48 @@ def load_events(con: sqlite3.Connection) -> None:
           and school_qid is not null and school_qid != '';
         """
     )
+    if NBA_DB.exists():
+        con.executescript(
+            """
+            insert or replace into player_location_events
+            (event_id, sport, player_id, event_type, location_id, start_year, end_year, duration_years, source, source_key, confidence, notes)
+            select
+                stable_id('NBA', athlete_id, 'born', birth_place_city, birth_place_state, birth_place_country),
+                'NBA',
+                athlete_id,
+                'born',
+                stable_id('NBA', 'birthplace', birth_place_city, birth_place_state, birth_place_country),
+                cast(nullif(birth_year, '') as integer),
+                cast(nullif(birth_year, '') as integer),
+                null,
+                'hoopR NBA roster snapshots',
+                athlete_id,
+                'source_reported',
+                'Birthplace fields currently come from current/recent hoopR roster snapshots only.'
+            from nba.nba_players
+            where birth_place_city is not null and birth_place_city != ''
+              and birth_place_country is not null and birth_place_country != '';
+
+            insert or replace into player_location_events
+            (event_id, sport, player_id, event_type, location_id, start_year, end_year, duration_years, source, source_key, confidence, notes)
+            select
+                stable_id('NBA', athlete_id, 'played_pro', team_id, venue_id),
+                'NBA',
+                athlete_id,
+                'played_pro',
+                stable_id('NBA', 'pro_venue', venue_id, venue_full_name),
+                cast(start_year as integer),
+                cast(end_year as integer),
+                cast(seasons as integer),
+                source,
+                team_id || '|' || venue_id || '|' || season_list,
+                'roster_home_venue_city_inferred',
+                'Player/team season association joined to the team season home venue; coordinates are venue city centroids, not exact arena coordinates.'
+            from nba.nba_pro_venue_events
+            where athlete_id is not null and athlete_id != ''
+              and venue_id is not null and venue_id != '';
+            """
+        )
     if WIKIDATA_BIRTHPLACE_DB.exists():
         con.executescript(
             """
@@ -607,6 +714,8 @@ def add_sources(con: sqlite3.Connection) -> None:
         ("nfl_enrichment", repo_path(NFL_DB), "NFL nflverse/Scorecard cache"),
         ("wikidata_education", repo_path(WIKIDATA_DB), "Wikidata P69 education cache"),
     ]
+    if NBA_DB.exists():
+        rows.append(("nba_enrichment", repo_path(NBA_DB), "NBA hoopR CC BY 4.0 player/team/venue cache"))
     if WIKIDATA_BIRTHPLACE_DB.exists():
         rows.append(("wikidata_birthplace", repo_path(WIKIDATA_BIRTHPLACE_DB), "Wikidata P19 birthplace cache"))
     if NFL_STADIUM_DB.exists():
