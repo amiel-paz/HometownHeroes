@@ -8,14 +8,13 @@ datasets and media remain governed by their own licenses and terms.
 
 - Leaflet: https://leafletjs.com/ ; BSD-2-Clause.
 - OpenStreetMap map data and standard tiles: https://www.openstreetmap.org/copyright ; map data is licensed under the Open Database License and must be credited to OpenStreetMap contributors.
-- CARTO basemaps: https://carto.com/basemaps/ ; the dark basemap used by the experimental visualizer requires CARTO and OpenStreetMap attribution.
 - Nominatim geocoding: https://nominatim.org/ ; used only for typed-place lookup in the local visualizer cache.
 
 ## Sports Data
 
 - Lahman Baseball Database: https://cran.r-project.org/package=Lahman and https://github.com/cdalzell/Lahman ; used for MLB people, teams, parks, college-playing rows, All-Star rows, and Hall of Fame rows.
 - Chadwick Bureau Register: https://github.com/chadwickbureau/register ; used for MLB identity resolution context.
-- nflverse data: https://github.com/nflverse/nflverse-data and https://github.com/nflverse/nfldata ; used for NFL player, roster, team, and schedule-derived venue rows.
+- nflverse data: https://github.com/nflverse/nflverse-data ; CC BY 4.0 snapshots used for NFL player, roster, team, and schedule-derived venue rows.
 - hoopR NBA data: https://github.com/sportsdataverse/hoopR-nba-data ; CC BY 4.0 snapshots used for NBA player/team seasons, schedules, rosters, and venue city context.
 
 ## Geography and Schools

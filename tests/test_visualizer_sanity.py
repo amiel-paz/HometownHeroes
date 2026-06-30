@@ -64,7 +64,6 @@ class AttributionTests(unittest.TestCase):
         text = viz.ATTRIBUTIONS_PATH.read_text(encoding="utf-8")
         for name in (
             "OpenStreetMap",
-            "CARTO",
             "Leaflet",
             "GeoNames",
             "Wikidata",

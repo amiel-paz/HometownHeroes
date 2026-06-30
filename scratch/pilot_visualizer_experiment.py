@@ -1136,6 +1136,14 @@ HTML = r"""
       position: absolute;
       inset: 0;
     }
+    body.theme-dark .leaflet-tile-pane {
+      filter: invert(.9) hue-rotate(180deg) saturate(.75) brightness(.72) contrast(1.08);
+    }
+    body.theme-dark .leaflet-marker-pane,
+    body.theme-dark .leaflet-overlay-pane,
+    body.theme-dark .leaflet-shadow-pane {
+      filter: none;
+    }
     .leaflet-bottom.leaflet-left {
       left: calc(var(--query-panel-width) + 24px);
       bottom: 12px;
@@ -1384,15 +1392,9 @@ HTML = r"""
 
     const map = L.map('map', { zoomControl: false }).setView([center.lat, center.lon], 9);
     L.control.zoom({ position: 'bottomleft' }).addTo(map);
-    const tileThemes = {
-      light: {
-        url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-        options: { maxZoom: 19, attribution: '&copy; OpenStreetMap contributors' }
-      },
-      dark: {
-        url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-        options: { maxZoom: 20, attribution: '&copy; OpenStreetMap contributors &copy; CARTO' }
-      }
+    const tileSpec = {
+      url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+      options: { maxZoom: 19, attribution: '&copy; OpenStreetMap contributors' }
     };
     resultLayer.addTo(map);
 
@@ -1405,8 +1407,7 @@ HTML = r"""
       if (toggle) toggle.setAttribute('aria-pressed', currentTheme === 'dark' ? 'true' : 'false');
       if (label) label.textContent = currentTheme === 'dark' ? 'Dark' : 'Light';
       if (tileLayer) tileLayer.remove();
-      const spec = tileThemes[currentTheme];
-      tileLayer = L.tileLayer(spec.url, spec.options).addTo(map);
+      tileLayer = L.tileLayer(tileSpec.url, tileSpec.options).addTo(map);
       tileLayer.bringToBack();
       if (centerMarker || radiusLayer) updateCenterLayers();
     }

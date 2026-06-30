@@ -18,7 +18,7 @@ Acquired on 2026-06-24.
 - nflverse player master parquet: https://github.com/nflverse/nflverse-data/releases/download/players/players.parquet
 - nflverse seasonal rosters: https://github.com/nflverse/nflverse-data/releases/download/rosters/roster_{season}.csv
 - nflverse team metadata: https://github.com/nflverse/nflverse-data/releases/download/teams/teams_colors_logos.csv
-- nflverse / Lee Sharpe schedules: https://raw.githubusercontent.com/nflverse/nfldata/master/data/games.csv
+- nflverse schedules: https://github.com/nflverse/nflverse-data/releases/download/schedules/games.csv
   - Used for schedule-derived team-season home stadiums from 1999 onward.
 
 ## NBA
@@ -92,7 +92,6 @@ Acquired on 2026-06-24.
 
 - Leaflet: https://leafletjs.com/
 - OpenStreetMap tiles/data: https://www.openstreetmap.org/copyright
-- CARTO dark basemap tiles: https://carto.com/basemaps/
 - Nominatim typed-place geocoding: https://nominatim.org/
 
 ## Notes

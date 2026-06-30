@@ -2,8 +2,8 @@
 """
 Build NFL stadium and team-season home-location caches.
 
-This pipeline uses nflverse/Lee Sharpe schedules for structured game-level
-home stadiums, then resolves unique stadium coordinates through Wikidata.
+This pipeline uses nflverse-data schedules for structured game-level home
+stadiums, then resolves unique stadium coordinates through Wikidata.
 The derived pro-player stadium events are roster-home associations, not
 game-appearance records.
 """
@@ -29,7 +29,7 @@ RAW_SCHEDULES = RAW_NFL / "nflverse-schedules"
 RAW_ROSTERS = RAW_NFL / "nflverse-rosters"
 RAW_WIKIDATA = ROOT / "data/raw/wikidata/stadiums"
 
-SCHEDULES_URL = "https://raw.githubusercontent.com/nflverse/nfldata/master/data/games.csv"
+SCHEDULES_URL = "https://github.com/nflverse/nflverse-data/releases/download/schedules/games.csv"
 SCHEDULES_CSV = RAW_SCHEDULES / "games.csv"
 WIKIDATA_CACHE = RAW_WIKIDATA / "nfl_stadium_geocode.json"
 WIKIDATA_QID_CACHE = RAW_WIKIDATA / "nfl_stadium_geocode_qids.json"
