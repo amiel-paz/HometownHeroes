@@ -620,6 +620,8 @@ HTML = r"""
   <style>
     :root {
       color-scheme: light;
+      --query-panel-width: 430px;
+      --players-panel-width: clamp(300px, 22vw, 390px);
       --ink: #172033;
       --muted: #657085;
       --line: #e3e7ee;
@@ -660,23 +662,69 @@ HTML = r"""
     }
     .app {
       height: 100vh;
-      display: grid;
-      grid-template-columns: clamp(400px, 32vw, 500px) minmax(0, 1fr);
+      position: relative;
       overflow: hidden;
     }
-    aside {
+    .query-panel {
+      position: fixed;
+      z-index: 650;
+      top: 14px;
+      left: 14px;
+      width: min(var(--query-panel-width), calc(100vw - var(--players-panel-width) - 56px));
+      max-height: calc(100vh - 28px);
       display: grid;
-      grid-template-rows: auto auto auto 1fr;
+      grid-template-rows: auto auto;
       min-width: 0;
-      background: var(--panel);
+      overflow: auto;
+      background: var(--float);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      box-shadow: 0 12px 32px var(--sidebar-shadow);
+      backdrop-filter: blur(10px);
+    }
+    .players-panel {
+      position: fixed;
+      z-index: 650;
+      top: 14px;
+      right: 14px;
+      bottom: 14px;
+      width: var(--players-panel-width);
+      display: grid;
+      grid-template-rows: auto 1fr;
+      min-width: 0;
       overflow: hidden;
-      box-shadow: 8px 0 24px var(--sidebar-shadow);
-      z-index: 600;
+      background: var(--float);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      box-shadow: 0 12px 32px var(--sidebar-shadow);
+      backdrop-filter: blur(10px);
+      transition: transform .18s ease;
+    }
+    .players-panel.collapsed {
+      transform: translateX(calc(100% - 44px));
+    }
+    .players-panel.collapsed .results-bar,
+    .players-panel.collapsed .list {
+      opacity: 0;
+      pointer-events: none;
+    }
+    .panel-toggle {
+      position: absolute;
+      z-index: 3;
+      left: 6px;
+      top: 8px;
+      width: 32px;
+      min-height: 32px;
+      padding: 0;
+      border-radius: 8px;
+      color: var(--ink);
+      background: var(--field);
+      box-shadow: 0 2px 8px var(--shadow);
     }
     .controls {
-      padding: 18px 20px 14px;
+      padding: 16px;
       display: grid;
-      gap: 13px;
+      gap: 11px;
       border-bottom: 1px solid var(--line);
     }
     .title {
@@ -685,8 +733,14 @@ HTML = r"""
       justify-content: space-between;
       gap: 12px;
     }
+    .title-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
     h1 {
-      font-size: 24px;
+      font-size: 25px;
       line-height: 1.1;
       margin: 0;
       font-weight: 750;
@@ -788,6 +842,19 @@ HTML = r"""
     body.theme-dark .theme-toggle .toggle-track::after {
       transform: translateX(16px);
     }
+    .query-toggle {
+      display: none;
+      min-height: 30px;
+      padding: 4px 8px;
+      color: var(--accent);
+      background: var(--field);
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .query-advanced {
+      display: grid;
+      gap: 11px;
+    }
     .place-wrap {
       position: relative;
       display: grid;
@@ -833,7 +900,7 @@ HTML = r"""
     .filter-row {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 14px;
+      gap: 10px;
     }
     .filter-group {
       display: grid;
@@ -921,20 +988,19 @@ HTML = r"""
       flex: 1;
     }
     .meta {
-      padding: 8px 20px;
+      padding: 8px 16px;
       color: var(--muted);
       font-size: 12px;
       line-height: 1.35;
-      border-bottom: 1px solid var(--line);
     }
     .results-bar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: start;
       gap: 8px;
-      padding: 10px 20px;
+      padding: 12px 12px 12px 46px;
       border-bottom: 1px solid var(--line);
-      background: var(--panel);
+      background: transparent;
       position: sticky;
       top: 0;
       z-index: 2;
@@ -956,13 +1022,17 @@ HTML = r"""
     }
     .results-actions {
       display: flex;
-      gap: 8px;
+      gap: 6px;
       align-items: center;
+      justify-content: flex-end;
       flex-shrink: 0;
+    }
+    #showPlayers {
+      display: none;
     }
     .list {
       overflow: auto;
-      padding: 0 20px 16px;
+      padding: 0 12px 14px;
       display: grid;
       gap: 0;
       align-content: start;
@@ -1058,18 +1128,24 @@ HTML = r"""
     }
     main {
       position: relative;
+      width: 100%;
+      height: 100%;
       min-width: 0;
     }
     #map {
       position: absolute;
       inset: 0;
     }
+    .leaflet-bottom.leaflet-left {
+      left: calc(var(--query-panel-width) + 24px);
+      bottom: 12px;
+    }
     .map-status {
       position: absolute;
       z-index: 500;
-      left: 12px;
+      left: calc(var(--query-panel-width) + 86px);
       bottom: 12px;
-      max-width: min(520px, calc(100vw - 470px));
+      max-width: min(520px, calc(100vw - var(--players-panel-width) - 44px));
       background: var(--float);
       border: 0;
       border-radius: 999px;
@@ -1092,7 +1168,7 @@ HTML = r"""
     .legend {
       position: absolute;
       z-index: 500;
-      right: 12px;
+      right: calc(var(--players-panel-width) + 28px);
       top: 12px;
       background: var(--float);
       border: 0;
@@ -1114,26 +1190,92 @@ HTML = r"""
       border-radius: 50%;
       display: inline-block;
     }
-    @media (max-width: 760px) {
-      .app { grid-template-columns: 1fr; grid-template-rows: 48vh 52vh; }
-      main { order: 1; }
-      aside { order: 2; border-right: 0; border-top: 1px solid var(--line); overflow: auto; box-shadow: none; }
-      .map-status { max-width: calc(100vw - 24px); }
+    @media (max-width: 900px) {
+      .query-panel {
+        top: 8px;
+        left: 8px;
+        right: 8px;
+        width: auto;
+        max-height: 48vh;
+      }
+      .query-panel.collapsed .query-advanced {
+        display: none;
+      }
+      .query-panel.collapsed .controls {
+        border-bottom: 0;
+      }
+      .query-panel.collapsed .meta {
+        display: none;
+      }
+      .title {
+        gap: 8px;
+      }
+      h1 {
+        font-size: 22px;
+      }
+      .query-toggle {
+        display: inline-grid;
+        place-items: center;
+      }
+      .controls {
+        padding: 12px;
+        gap: 9px;
+      }
+      input, select, button {
+        min-height: 34px;
+      }
+      .players-panel {
+        left: 8px;
+        right: 8px;
+        top: auto;
+        bottom: 8px;
+        width: auto;
+        height: 43vh;
+      }
+      .players-panel.collapsed {
+        transform: translateY(calc(100% - 46px));
+      }
+      .legend {
+        display: none;
+      }
+      .leaflet-bottom.leaflet-left {
+        left: 8px;
+        bottom: calc(43vh + 18px);
+      }
+      .map-status {
+        display: none;
+      }
       .controls { padding-bottom: 10px; }
+      .grid2 { grid-template-columns: 1fr 1fr; }
       .filter-row { grid-template-columns: 1fr; }
+      .player {
+        grid-template-columns: 48px 1fr;
+      }
+      .avatar {
+        width: 48px;
+        height: 48px;
+      }
     }
   </style>
 </head>
 <body>
   <div class="app">
-    <aside>
+    <main>
+      <div id="map"></div>
+      <div class="legend" id="legend"></div>
+      <div class="map-status" id="mapStatus">Click the map to move the search center. Click a colored dot to filter the Players list.</div>
+    </main>
+    <aside class="query-panel" id="queryPanel">
       <section class="controls">
         <div class="title">
           <h1>HometownHeroes</h1>
-          <button id="themeToggle" class="theme-toggle" type="button" title="Toggle light or dark mode" aria-pressed="false">
-            <span class="toggle-track" aria-hidden="true"></span>
-            <span id="themeLabel">Light</span>
-          </button>
+          <div class="title-actions">
+            <button id="toggleQuery" class="query-toggle" type="button" title="Show query filters" aria-expanded="true">Filters</button>
+            <button id="themeToggle" class="theme-toggle" type="button" title="Toggle light or dark mode" aria-pressed="false">
+              <span class="toggle-track" aria-hidden="true"></span>
+              <span id="themeLabel">Light</span>
+            </button>
+          </div>
         </div>
         <div class="row">
           <div class="place-wrap">
@@ -1144,64 +1286,69 @@ HTML = r"""
           </div>
           <button id="geocode" class="primary" title="Geocode typed place">Go</button>
         </div>
-        <div class="grid2">
-          <label>Radius Miles
-            <input id="radius" type="number" min="1" max="500" value="50">
-          </label>
-          <label>Sort List
-            <select id="sort">
-              <option value="nearest">Nearest</option>
-              <option value="year">Year</option>
-              <option value="career_length">Career length</option>
-              <option value="all_star">All-Star / Pro Bowl</option>
-              <option value="all_pro">All-Pro / All-NBA</option>
-            </select>
-          </label>
-        </div>
-        <div class="grid2">
-          <label>Pro Career Start
-            <input id="proStartYear" type="number" value="1970">
-          </label>
-          <label>Pro Career End
-            <input id="proEndYear" type="number" value="2026">
-          </label>
-        </div>
-        <div class="grid2">
-          <label>Birth Year Start
-            <input id="birthStartYear" type="number" value="1800">
-          </label>
-          <label>Birth Year End
-            <input id="birthEndYear" type="number" value="2026">
-          </label>
-        </div>
-        <div class="filter-row">
-          <section class="filter-group" aria-label="Sport filters">
-            <div class="filter-title">Sports</div>
-            <div class="checks">
-              <label><input type="checkbox" id="sportMLB" checked> MLB</label>
-              <label><input type="checkbox" id="sportNFL" checked> NFL</label>
-              <label><input type="checkbox" id="sportNBA" checked> NBA</label>
-            </div>
-          </section>
-          <section class="filter-group" aria-label="Honor filters">
-            <div class="filter-title">Honors</div>
-            <div class="checks">
-              <label><input type="checkbox" id="allStarOnly"> All-Star / Pro Bowl</label>
-              <label><input type="checkbox" id="allProOnly"> All-Pro / All-NBA</label>
-              <label><input type="checkbox" id="hofOnly"> HOF only</label>
-            </div>
-          </section>
-        </div>
-        <div class="query-builder">
-          <div class="row">
-            <div class="query-help">Any group may match. Inside one group, every condition is required.</div>
-            <button id="addGroup" class="icon" title="Add OR group">+</button>
+        <div class="query-advanced" id="queryAdvanced">
+          <div class="grid2">
+            <label>Radius Miles
+              <input id="radius" type="number" min="1" max="500" value="50">
+            </label>
+            <label>Sort List
+              <select id="sort">
+                <option value="nearest">Nearest</option>
+                <option value="year">Year</option>
+                <option value="career_length">Career length</option>
+                <option value="all_star">All-Star / Pro Bowl</option>
+                <option value="all_pro">All-Pro / All-NBA</option>
+              </select>
+            </label>
           </div>
-          <div id="groups"></div>
+          <div class="grid2">
+            <label>Pro Career Start
+              <input id="proStartYear" type="number" value="1970">
+            </label>
+            <label>Pro Career End
+              <input id="proEndYear" type="number" value="2026">
+            </label>
+          </div>
+          <div class="grid2">
+            <label>Birth Year Start
+              <input id="birthStartYear" type="number" value="1800">
+            </label>
+            <label>Birth Year End
+              <input id="birthEndYear" type="number" value="2026">
+            </label>
+          </div>
+          <div class="filter-row">
+            <section class="filter-group" aria-label="Sport filters">
+              <div class="filter-title">Sports</div>
+              <div class="checks">
+                <label><input type="checkbox" id="sportMLB" checked> MLB</label>
+                <label><input type="checkbox" id="sportNFL" checked> NFL</label>
+                <label><input type="checkbox" id="sportNBA" checked> NBA</label>
+              </div>
+            </section>
+            <section class="filter-group" aria-label="Honor filters">
+              <div class="filter-title">Honors</div>
+              <div class="checks">
+                <label><input type="checkbox" id="allStarOnly"> All-Star / Pro Bowl</label>
+                <label><input type="checkbox" id="allProOnly"> All-Pro / All-NBA</label>
+                <label><input type="checkbox" id="hofOnly"> HOF only</label>
+              </div>
+            </section>
+          </div>
+          <div class="query-builder">
+            <div class="row">
+              <div class="query-help">Any group may match. Inside one group, every condition is required.</div>
+              <button id="addGroup" class="icon" title="Add OR group">+</button>
+            </div>
+            <div id="groups"></div>
+          </div>
+          <button id="run" class="primary">Run Query</button>
         </div>
-        <button id="run" class="primary">Run Query</button>
       </section>
       <section class="meta" id="meta">Ready.</section>
+    </aside>
+    <aside class="players-panel" id="playersPanel">
+      <button id="togglePlayers" class="panel-toggle" type="button" title="Collapse players panel" aria-expanded="true">›</button>
       <section class="results-bar" id="resultsBar">
         <div class="results-title">
           <strong id="resultsTitle">Players</strong>
@@ -1215,11 +1362,6 @@ HTML = r"""
       </section>
       <section class="list" id="list"></section>
     </aside>
-    <main>
-      <div id="map"></div>
-      <div class="legend" id="legend"></div>
-      <div class="map-status" id="mapStatus">Click the map to move the search center. Click a colored dot to filter the Players list.</div>
-    </main>
   </div>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
@@ -1240,7 +1382,8 @@ HTML = r"""
     let currentTheme = localStorage.getItem('hhTheme') || 'light';
     let tileLayer = null;
 
-    const map = L.map('map', { zoomControl: true }).setView([center.lat, center.lon], 9);
+    const map = L.map('map', { zoomControl: false }).setView([center.lat, center.lon], 9);
+    L.control.zoom({ position: 'bottomleft' }).addTo(map);
     const tileThemes = {
       light: {
         url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
@@ -1625,7 +1768,32 @@ HTML = r"""
     }
 
     function jumpToPlayers() {
-      document.getElementById('resultsBar').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setPlayersCollapsed(false);
+      document.getElementById('list').scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function isCompactLayout() {
+      return window.matchMedia('(max-width: 900px)').matches;
+    }
+
+    function setQueryCollapsed(collapsed) {
+      const panel = document.getElementById('queryPanel');
+      const button = document.getElementById('toggleQuery');
+      panel.classList.toggle('collapsed', collapsed);
+      button.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+      button.textContent = collapsed ? 'Filters' : 'Hide';
+      button.title = collapsed ? 'Show query filters' : 'Hide query filters';
+      setTimeout(() => map.invalidateSize(), 200);
+    }
+
+    function setPlayersCollapsed(collapsed) {
+      const panel = document.getElementById('playersPanel');
+      const button = document.getElementById('togglePlayers');
+      panel.classList.toggle('collapsed', collapsed);
+      button.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+      button.title = collapsed ? 'Expand players panel' : 'Collapse players panel';
+      button.textContent = collapsed ? '‹' : '›';
+      setTimeout(() => map.invalidateSize(), 200);
     }
 
     function renderResults(data) {
@@ -1659,6 +1827,7 @@ HTML = r"""
     async function runQuery() {
       updateCenterLayers();
       document.getElementById('meta').textContent = 'Running query...';
+      if (isCompactLayout()) setQueryCollapsed(true);
       try {
         const data = await postJSON('/api/search', currentQuery());
         renderResults(data);
@@ -1712,6 +1881,14 @@ HTML = r"""
     document.getElementById('allStarOnly').addEventListener('change', runQuery);
     document.getElementById('allProOnly').addEventListener('change', runQuery);
     document.getElementById('showPlayers').addEventListener('click', jumpToPlayers);
+    document.getElementById('toggleQuery').addEventListener('click', () => {
+      const panel = document.getElementById('queryPanel');
+      setQueryCollapsed(!panel.classList.contains('collapsed'));
+    });
+    document.getElementById('togglePlayers').addEventListener('click', () => {
+      const panel = document.getElementById('playersPanel');
+      setPlayersCollapsed(!panel.classList.contains('collapsed'));
+    });
     document.getElementById('themeToggle').addEventListener('click', () => {
       applyTheme(currentTheme === 'dark' ? 'light' : 'dark');
     });
@@ -1730,6 +1907,14 @@ HTML = r"""
     renderGroups();
     renderLegend();
     applyTheme(currentTheme);
+    setQueryCollapsed(isCompactLayout());
+    window.addEventListener('resize', () => {
+      if (isCompactLayout()) {
+        setQueryCollapsed(true);
+      } else {
+        setQueryCollapsed(false);
+      }
+    });
     updateCenterLayers();
     runQuery();
   </script>
