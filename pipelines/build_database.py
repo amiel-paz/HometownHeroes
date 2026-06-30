@@ -402,7 +402,13 @@ def load_locations(con: sqlite3.Connection) -> None:
         select
             stable_id('MLB', 'birthplace', birth_city, birth_state, birth_country),
             'birthplace',
-            birth_city || ', ' || birth_state,
+            case
+                when (birth_city is null or birth_city = '') and upper(coalesce(birth_country, '')) in ('P.R.', 'PR', 'PRI') then 'Puerto Rico'
+                when birth_state is not null and birth_state != '' then birth_city || ', ' || birth_state
+                when upper(coalesce(birth_country, '')) in ('P.R.', 'PR', 'PRI') then birth_city || ', Puerto Rico'
+                when birth_country is not null and birth_country != '' then birth_city || ', ' || birth_country
+                else birth_city
+            end,
             birth_city,
             birth_state,
             birth_country,
@@ -413,7 +419,8 @@ def load_locations(con: sqlite3.Connection) -> None:
             'MLB birth geocode cache',
             birth_city || '|' || birth_state || '|' || birth_country
         from mlb.mlb_birthplace_geocode_cache
-        where birth_city is not null and birth_state is not null;
+        where birth_country is not null
+          and (birth_city is not null or upper(coalesce(birth_country, '')) in ('P.R.', 'PR', 'PRI'));
 
         insert or replace into locations
         (location_id, location_kind, label, city, state, country, latitude, longitude, geocode_status, geocode_source, source, source_key)
@@ -649,7 +656,8 @@ def load_events(con: sqlite3.Connection) -> None:
             'source_reported',
             null
         from mlb.mlb_players p
-        where p.birthCity is not null and p.birthState is not null and p.birthCountry is not null;
+        where p.birthCountry is not null
+          and (p.birthCity is not null or upper(coalesce(p.birthCountry, '')) in ('P.R.', 'PR', 'PRI'));
 
         insert or replace into player_location_events
         (event_id, sport, player_id, event_type, location_id, start_year, end_year, duration_years, source, source_key, confidence, notes)

@@ -165,6 +165,31 @@ class OptionalDatabaseTests(unittest.TestCase):
         self.assertLessEqual(event_labels, {"College"})
         self.assertLessEqual(event_types, {"college"})
 
+    @unittest.skipUnless(viz.DB_PATH.exists(), "local scratch database is not present")
+    def test_puerto_rico_birthplace_coverage_includes_lahman_pr(self) -> None:
+        con = viz.connect()
+        try:
+            mlb_born, total = con.execute(
+                """
+                with pr_locations as (
+                    select location_id
+                    from locations
+                    where upper(coalesce(country, '')) in ('PR', 'P.R.', 'PRI')
+                       or upper(coalesce(state, '')) in ('PR', 'P.R.', 'PUERTO RICO')
+                       or lower(label) like '%puerto rico%'
+                )
+                select
+                    count(distinct case when sport = 'MLB' and event_type = 'born' then sport || ':' || player_id end),
+                    count(distinct sport || ':' || player_id)
+                from geocoded_player_location_events
+                join pr_locations using (location_id);
+                """
+            ).fetchone()
+        finally:
+            con.close()
+        self.assertGreaterEqual(mlb_born, 311)
+        self.assertGreaterEqual(total, 328)
+
 
 if __name__ == "__main__":
     unittest.main()

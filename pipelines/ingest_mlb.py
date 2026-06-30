@@ -80,6 +80,10 @@ COUNTRY_ALIASES = {
     "mexico": "MX",
     "mexico": "MX",
     "méxico": "MX",
+    "p r": "PR",
+    "pr": "PR",
+    "pri": "PR",
+    "puerto rico": "PR",
     "usa": "US",
     "us": "US",
     "united states": "US",
@@ -96,6 +100,15 @@ COUNTRY_ALIASES = {
     "u s virgin islands": "VI",
     "us virgin islands": "VI",
     "virgin islands": "VI",
+}
+
+PUERTO_RICO_CENTROID = {
+    "status": "matched",
+    "latitude": 18.2208,
+    "longitude": -66.5901,
+    "source_label": "Puerto Rico",
+    "source": "Puerto Rico island centroid fallback",
+    "geonameid": None,
 }
 
 
@@ -186,6 +199,11 @@ def place_name_norm(name: str | None) -> str:
 
 
 def ascii_norm(value: str | None) -> str:
+    try:
+        if pd.isna(value):
+            value = ""
+    except TypeError:
+        pass
     text = unicodedata.normalize("NFKD", value or "")
     text = "".join(ch for ch in text if not unicodedata.combining(ch))
     text = text.replace("&", " and ")
@@ -248,6 +266,11 @@ def country_to_iso(country: str | None, countries: dict[str, dict[str, str]]) ->
         if key in {ascii_norm(row["country"]), ascii_norm(row["iso"]), ascii_norm(row["iso3"]), ascii_norm(row["fips"])}:
             return iso
     return None
+
+
+def is_puerto_rico(country: str | None, state: str | None = None) -> bool:
+    aliases = {"p r", "pr", "pri", "puerto rico"}
+    return ascii_norm(country) in aliases or ascii_norm(state) in aliases
 
 
 def load_geonames_admin1() -> dict[tuple[str, str], set[str]]:
@@ -473,7 +496,16 @@ def main() -> None:
         row["player_year_rows"] = school_counts[row["schoolID"]]
 
     birth_locations = []
-    for (city, state, country), group in people.dropna(subset=["birthCity", "birthState"]).groupby(["birthCity", "birthState", "birthCountry"], dropna=False):
+    people_with_birth_city = people.dropna(subset=["birthCity"]).copy()
+    puerto_rico_country_only = people[
+        people["birthCity"].isna()
+        & people.apply(lambda row: is_puerto_rico(row.get("birthCountry"), row.get("birthState")), axis=1)
+    ].copy()
+    puerto_rico_country_only["birthCity"] = ""
+    people_with_birth_city = pd.concat([people_with_birth_city, puerto_rico_country_only], ignore_index=True)
+    people_with_birth_city["birthState"] = people_with_birth_city["birthState"].fillna("")
+    people_with_birth_city["birthCountry"] = people_with_birth_city["birthCountry"].fillna("")
+    for (city, state, country), group in people_with_birth_city.groupby(["birthCity", "birthState", "birthCountry"], dropna=False):
         loc = resolve_city(census_places, city, state, country)
         source = "Census Gazetteer place centroid" if loc["status"] == "matched" else None
         geonameid = None
@@ -483,6 +515,10 @@ def main() -> None:
                 loc = global_loc
                 source = global_loc["source"]
                 geonameid = global_loc["geonameid"]
+        if loc["status"] != "matched" and is_puerto_rico(country, state):
+            loc = PUERTO_RICO_CENTROID
+            source = loc["source"]
+            geonameid = loc["geonameid"]
         birth_locations.append(
             {
                 "birth_city": city,
@@ -576,7 +612,7 @@ def main() -> None:
         from mlb_players p
         left join mlb_birthplace_geocode_cache b
           on p.birthCity = b.birth_city
-         and p.birthState = b.birth_state
+         and coalesce(p.birthState, '') = coalesce(b.birth_state, '')
          and p.birthCountry = b.birth_country;
 
         create view mlb_college_events_with_location as
