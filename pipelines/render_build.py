@@ -8,6 +8,7 @@ start from the same reproducible pipeline used locally.
 
 from __future__ import annotations
 
+import gzip
 import os
 import shutil
 import subprocess
@@ -19,6 +20,9 @@ ROOT = Path(__file__).resolve().parents[1]
 PYTHON = sys.executable
 SCRATCH = ROOT / "scratch"
 APP_DB = SCRATCH / "HometownHeroes.sqlite"
+DERIVED = ROOT / "data" / "derived"
+PLAYER_MEDIA_DB = SCRATCH / "player_media.sqlite"
+PLAYER_MEDIA_ARTIFACT = DERIVED / "player_media.sqlite.gz"
 
 
 def env_flag(name: str, default: bool = False) -> bool:
@@ -43,6 +47,22 @@ def maybe_copy_database_to_runtime_path() -> None:
     target.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(APP_DB, target)
     print(f"copied deploy database to {target}", flush=True)
+
+
+def hydrate_player_media_from_artifact() -> None:
+    if PLAYER_MEDIA_DB.exists():
+        print(f"using existing media cache: {PLAYER_MEDIA_DB}", flush=True)
+        return
+    if not PLAYER_MEDIA_ARTIFACT.exists():
+        print(f"media artifact not found; player photos will be skipped: {PLAYER_MEDIA_ARTIFACT}", flush=True)
+        return
+
+    PLAYER_MEDIA_DB.parent.mkdir(parents=True, exist_ok=True)
+    tmp = PLAYER_MEDIA_DB.with_suffix(PLAYER_MEDIA_DB.suffix + ".tmp")
+    print(f"hydrating media cache from {PLAYER_MEDIA_ARTIFACT}", flush=True)
+    with gzip.open(PLAYER_MEDIA_ARTIFACT, "rb") as source, tmp.open("wb") as target:
+        shutil.copyfileobj(source, target)
+    tmp.replace(PLAYER_MEDIA_DB)
 
 
 def main() -> int:
@@ -152,6 +172,8 @@ def main() -> int:
                 "--skip-wikipedia-fallback",
             ]
         )
+    else:
+        hydrate_player_media_from_artifact()
 
     commands.append([PYTHON, "pipelines/build_database.py"])
 

@@ -84,6 +84,9 @@ Acquired on 2026-06-24.
 - Cached Commons image metadata: data/raw/wikimedia_commons/
   - Used to retrieve thumbnail URLs, source page URLs, author/attribution text, and per-file license metadata for player photos.
   - Public player cards should display the cached attribution and license fields when a thumbnail is shown.
+- Deploy media artifact: data/derived/player_media.sqlite.gz
+  - Compressed derived SQLite cache built from Wikidata, Wikipedia, and Wikimedia Commons metadata.
+  - Used by hosted builds to avoid re-crawling Wikimedia APIs during deploy.
 
 ## Map / Visualizer
 

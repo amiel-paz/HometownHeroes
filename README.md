@@ -25,7 +25,7 @@ Render builds the generated SQLite database during deploy and starts the app on
 `0.0.0.0:$PORT`.
 
 The default Render build includes MLB, NFL, current NBA, all-time NBA Wikidata
-enrichment, honors, and geocoded association rows. It skips the slow
-player-media enrichment pass. Set `HH_RENDER_INCLUDE_MEDIA=1` in Render only
-when you want that deploy to refresh Wikimedia thumbnail metadata during the
-build.
+enrichment, honors, geocoded association rows, and the compressed derived media
+cache at `data/derived/player_media.sqlite.gz`. Set `HH_RENDER_INCLUDE_MEDIA=1`
+in Render only when you want that deploy to refresh Wikimedia thumbnail
+metadata during the build instead of hydrating the cached artifact.

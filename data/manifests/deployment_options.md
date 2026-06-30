@@ -42,5 +42,8 @@ exported to Postgres/PostGIS when the app needs always-on hosting.
 - `/api/status` is the health-check path.
 - Player photo/media enrichment is opt-in for Render builds because Wikimedia
   image metadata fetches are intentionally slow and rate-limit aware.
+- By default, Render hydrates `scratch/player_media.sqlite` from
+  `data/derived/player_media.sqlite.gz` so player photos can load without
+  re-crawling Wikimedia metadata during deploy.
 - The default Render build includes the all-time NBA Wikidata enrichment unless
   `HH_RENDER_SKIP_NBA_ALLTIME=1` is set.

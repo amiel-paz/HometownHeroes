@@ -1,7 +1,11 @@
 from __future__ import annotations
 
+import gzip
 import importlib.util
+import shutil
+import sqlite3
 import subprocess
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -92,12 +96,30 @@ class RenderDeployTests(unittest.TestCase):
         build_script = (ROOT / "pipelines" / "render_build.py").read_text(encoding="utf-8")
         self.assertIn("pipelines/enrich_nba_alltime_wikidata.py", build_script)
         self.assertIn("HH_RENDER_INCLUDE_MEDIA", build_script)
+        self.assertIn("data\" / \"derived", build_script)
+        self.assertIn("player_media.sqlite.gz", build_script)
 
     def test_repo_path_handles_hosted_database_paths(self) -> None:
         outside = Path("/tmp/HometownHeroes.sqlite")
         rendered = viz.repo_path(outside)
         self.assertTrue(rendered.startswith("/"))
         self.assertTrue(rendered.endswith("HometownHeroes.sqlite"))
+
+    def test_derived_media_artifact_is_readable(self) -> None:
+        artifact = ROOT / "data" / "derived" / "player_media.sqlite.gz"
+        self.assertTrue(artifact.exists())
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = Path(tmpdir) / "player_media.sqlite"
+            with gzip.open(artifact, "rb") as source, db_path.open("wb") as target:
+                shutil.copyfileobj(source, target)
+            con = sqlite3.connect(db_path)
+            try:
+                usable = con.execute(
+                    "select count(*) from player_media where usable=1 and thumbnail_url is not null and thumbnail_url != ''"
+                ).fetchone()[0]
+            finally:
+                con.close()
+        self.assertGreater(usable, 1000)
 
 
 class RepositoryScrubTests(unittest.TestCase):
