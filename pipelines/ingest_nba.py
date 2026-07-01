@@ -87,9 +87,14 @@ def download_manifest_and_license() -> None:
 
 
 def download_parquet_dir(source_dir: str, local_dir: Path, pattern: str) -> list[Path]:
+    regex = re.compile(pattern)
+    cached = sorted(path for path in local_dir.glob("*.parquet") if regex.match(path.name))
+    if cached:
+        log(f"using cached parquet directory: {repo_path(local_dir)} ({len(cached)} files)")
+        return cached
+
     rows = github_dir(source_dir)
     out: list[Path] = []
-    regex = re.compile(pattern)
     for row in rows:
         name = str(row.get("name", ""))
         url = row.get("download_url")
