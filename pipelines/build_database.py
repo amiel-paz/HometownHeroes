@@ -844,7 +844,7 @@ def load_events(con: sqlite3.Connection) -> None:
                 cast(end_year as integer),
                 cast(seasons as integer),
                 source,
-                team_id || '|' || venue_id || '|' || season_list,
+                team_display_name || '|' || team_id || '|' || venue_id || '|' || season_list,
                 'roster_home_venue_city_inferred',
                 'Player/team season association joined to the team season home venue; coordinates are venue city centroids, not exact arena coordinates.'
             from nba.nba_pro_venue_events

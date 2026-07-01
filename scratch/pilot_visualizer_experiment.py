@@ -536,7 +536,8 @@ def timeline_item_label(row: sqlite3.Row) -> str:
     if row["sport"] == "NBA" and row["source"].startswith("Wikidata P54"):
         return label
     if row["sport"] == "NBA" and parts and parts[0]:
-        return f"Team {parts[0]} / {label}" if label else f"Team {parts[0]}"
+        team_name = parts[0] if not parts[0].isdigit() else f"NBA team {parts[0]}"
+        return f"{team_name} / {label}" if label else team_name
     if row["sport"] == "MLB" and source_key:
         return f"{label} ({source_key})"
     return label
@@ -564,6 +565,26 @@ def timeline_years(value: str) -> set[int]:
         if start <= end and end - start <= 100:
             return set(range(start, end + 1))
     return set(years)
+
+
+def timeline_year_bounds(item: dict[str, Any]) -> tuple[int | None, int | None]:
+    years = [int(year) for year in re.findall(r"\b(?:19|20)\d{2}\b", item.get("years") or "")]
+    if not years:
+        return None, None
+    start = years[0]
+    if "-" in (item.get("years") or "") and len(years) >= 2:
+        return start, years[-1]
+    if (item.get("source") or "").startswith("Wikidata P54"):
+        return start, 9999
+    return start, start
+
+
+def timeline_ranges_overlap_or_continue(left: dict[str, Any], right: dict[str, Any]) -> bool:
+    left_start, left_end = timeline_year_bounds(left)
+    right_start, right_end = timeline_year_bounds(right)
+    if left_start is None or left_end is None or right_start is None or right_end is None:
+        return False
+    return left_start <= right_end and right_start <= left_end
 
 
 def timeline_item_rank(item: dict[str, Any]) -> tuple[int, int]:
@@ -597,7 +618,12 @@ def sanitize_timeline_items(section: str, items: list[dict[str, Any]]) -> list[d
         team_items = [
             item
             for item in items
-            if item.get("source") == "Wikipedia infobox pastteams" and timeline_years(item["years"])
+            if (
+                item.get("source") == "Wikipedia infobox pastteams"
+                or (item.get("source") or "").startswith("Wikidata P54")
+            )
+            and timeline_years(item["years"])
+            and " / " not in item["label"]
         ]
         cleaned = []
         for item in items:
@@ -609,6 +635,16 @@ def sanitize_timeline_items(section: str, items: list[dict[str, Any]]) -> list[d
                 has_team_duplicate = any(
                     normalize_timeline_label(team["label"]) == expected_key
                     and bool(years & timeline_years(team["years"]))
+                    for team in team_items
+                )
+                if has_team_duplicate:
+                    continue
+            if item.get("source", "").startswith("hoopR NBA") and " / " in item["label"]:
+                team_name = item["label"].split(" / ", 1)[0].strip()
+                team_key = normalize_timeline_label(team_name)
+                has_team_duplicate = any(
+                    normalize_timeline_label(team["label"]) == team_key
+                    and timeline_ranges_overlap_or_continue(team, item)
                     for team in team_items
                 )
                 if has_team_duplicate:

@@ -370,6 +370,33 @@ class OptionalDatabaseTests(unittest.TestCase):
         timeline = {section["key"]: section["items"] for section in jokic[0]["timeline"]}
         birthplace_labels = [item["label"] for item in timeline["birthplace"]]
         self.assertEqual(birthplace_labels, ["Sombor, Sombor City"])
+        jokic_pro_labels = [item["label"] for item in timeline["pro"]]
+        self.assertIn("Denver Nuggets", jokic_pro_labels)
+        self.assertNotIn("NBA team 7 / Ball Arena", jokic_pro_labels)
+
+    @unittest.skipUnless(viz.DB_PATH.exists(), "local scratch database is not present")
+    def test_nba_venue_timeline_uses_team_names_not_numeric_ids(self) -> None:
+        query = viz.normalize_query(
+            {
+                "place": "Sombor, Serbia",
+                "lat": 45.78,
+                "lon": 19.12,
+                "radius_mi": 75,
+                "pro_start_year": 1970,
+                "pro_end_year": 2026,
+                "birth_start_year": 1800,
+                "birth_end_year": 2026,
+                "sports": ["NBA"],
+                "groups": [{"clauses": [{"kind": "birthplace"}]}],
+            }
+        )
+        response = viz.build_response(query)
+        topic = [row for row in response["players"] if row["sport"] == "NBA" and row["display_name"] == "Nikola Topic"]
+        self.assertEqual(len(topic), 1)
+        timeline = {section["key"]: section["items"] for section in topic[0]["timeline"]}
+        pro_labels = [item["label"] for item in timeline["pro"]]
+        self.assertIn("Oklahoma City Thunder / Paycom Center", pro_labels)
+        self.assertNotIn("NBA team 25 / Paycom Center", pro_labels)
 
 
 if __name__ == "__main__":
