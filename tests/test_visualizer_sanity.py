@@ -277,10 +277,40 @@ class OptionalDatabaseTests(unittest.TestCase):
         self.assertIn("Houston Oilers", pro_labels)
         self.assertIn("Seattle Seahawks", pro_labels)
         self.assertIn("Kansas City Chiefs", pro_labels)
-        self.assertIn("GB / Lambeau Field", pro_labels)
-        self.assertIn("BAL / PSINet Stadium", pro_labels)
+        self.assertIn("Green Bay Packers", pro_labels)
+        self.assertIn("Baltimore Ravens", pro_labels)
+        self.assertNotIn("GB / Lambeau Field", pro_labels)
+        self.assertNotIn("BAL / PSINet Stadium", pro_labels)
         chiefs = [item for item in timeline["pro"] if item["label"] == "Kansas City Chiefs"]
         self.assertEqual(chiefs[0]["years"], "1994-1998")
+
+    def test_expanded_timeline_collapses_common_alias_duplicates(self):
+        query = viz.normalize_query(
+            {
+                "place": "San Jose, CA",
+                "lat": 37.3382,
+                "lon": -121.8863,
+                "radius_mi": 50,
+                "pro_start_year": 1970,
+                "pro_end_year": 2026,
+                "birth_start_year": 1800,
+                "birth_end_year": 2026,
+                "sports": ["NFL"],
+                "groups": [{"clauses": [{"kind": "birthplace"}]}, {"clauses": [{"kind": "high_school"}]}],
+            }
+        )
+        response = viz.build_response(query)
+        courtney_bryan = [
+            row for row in response["players"] if row["sport"] == "NFL" and row["display_name"] == "Courtney Bryan"
+        ]
+        self.assertEqual(len(courtney_bryan), 1)
+        timeline = {section["key"]: section["items"] for section in courtney_bryan[0]["timeline"]}
+        college_labels = [item["label"] for item in timeline["college"]]
+        pro_labels = [item["label"] for item in timeline["pro"]]
+        self.assertEqual(college_labels.count("New Mexico State University"), 1)
+        self.assertNotIn("New Mexico State University-Main Campus", college_labels)
+        self.assertIn("Miami Dolphins", pro_labels)
+        self.assertNotIn("MIA / Dolphin Stadium", pro_labels)
 
 
 if __name__ == "__main__":

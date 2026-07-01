@@ -71,6 +71,45 @@ TIMELINE_SECTION_ORDER = ["birthplace", "high_school", "college", "school", "pro
 
 NFL_PASTTEAMS_BY_TITLE: dict[str, list[dict[str, str]]] | None = None
 
+NFL_TEAM_NAMES_BY_ABBR = {
+    "ARI": "Arizona Cardinals",
+    "ATL": "Atlanta Falcons",
+    "BAL": "Baltimore Ravens",
+    "BUF": "Buffalo Bills",
+    "CAR": "Carolina Panthers",
+    "CHI": "Chicago Bears",
+    "CIN": "Cincinnati Bengals",
+    "CLE": "Cleveland Browns",
+    "DAL": "Dallas Cowboys",
+    "DEN": "Denver Broncos",
+    "DET": "Detroit Lions",
+    "GB": "Green Bay Packers",
+    "HOU": "Houston Texans",
+    "IND": "Indianapolis Colts",
+    "JAX": "Jacksonville Jaguars",
+    "KC": "Kansas City Chiefs",
+    "LA": "Los Angeles Rams",
+    "LAC": "Los Angeles Chargers",
+    "LAR": "Los Angeles Rams",
+    "LV": "Las Vegas Raiders",
+    "MIA": "Miami Dolphins",
+    "MIN": "Minnesota Vikings",
+    "NE": "New England Patriots",
+    "NO": "New Orleans Saints",
+    "NYG": "New York Giants",
+    "NYJ": "New York Jets",
+    "OAK": "Oakland Raiders",
+    "PHI": "Philadelphia Eagles",
+    "PIT": "Pittsburgh Steelers",
+    "SD": "San Diego Chargers",
+    "SEA": "Seattle Seahawks",
+    "SF": "San Francisco 49ers",
+    "STL": "St. Louis Rams",
+    "TB": "Tampa Bay Buccaneers",
+    "TEN": "Tennessee Titans",
+    "WAS": "Washington Commanders",
+}
+
 DEFAULT_QUERY = {
     "place": "San Jose, CA",
     "lat": 37.3382,
@@ -503,6 +542,86 @@ def timeline_item_label(row: sqlite3.Row) -> str:
     return label
 
 
+def normalize_timeline_label(label: str) -> str:
+    normalized = label.lower()
+    normalized = normalized.replace("&", " and ")
+    normalized = re.sub(r"[-_/]+", " ", normalized)
+    normalized = re.sub(r"\bmain campus\b", "", normalized)
+    normalized = re.sub(r"\bcampus\b", "", normalized)
+    normalized = re.sub(r"\bthe\b", "", normalized)
+    normalized = re.sub(r"[^a-z0-9]+", " ", normalized)
+    return " ".join(normalized.split())
+
+
+def timeline_years(value: str) -> set[int]:
+    if not value or value == "Years NA":
+        return set()
+    years = [int(year) for year in re.findall(r"\b(?:19|20)\d{2}\b", value)]
+    if not years:
+        return set()
+    if "-" in value and len(years) >= 2:
+        start, end = years[0], years[-1]
+        if start <= end and end - start <= 100:
+            return set(range(start, end + 1))
+    return set(years)
+
+
+def timeline_item_rank(item: dict[str, Any]) -> tuple[int, int]:
+    label = item["label"]
+    source = item.get("source") or ""
+    penalty = 0
+    if " / " in label:
+        penalty += 6
+    if label.endswith("-Main Campus") or " Main Campus" in label:
+        penalty += 4
+    if "stadium" in label.lower() or "field" in label.lower():
+        penalty += 2
+    if source == "Wikipedia infobox pastteams":
+        penalty -= 4
+    return (penalty, len(label))
+
+
+def nfl_abbr_for_timeline_item(item: dict[str, Any]) -> str | None:
+    label = item["label"]
+    if " / " not in label:
+        return None
+    prefix = label.split(" / ", 1)[0].strip()
+    return prefix if prefix in NFL_TEAM_NAMES_BY_ABBR else None
+
+
+def sanitize_timeline_items(section: str, items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    if section == "pro":
+        team_items = [
+            item
+            for item in items
+            if item.get("source") == "Wikipedia infobox pastteams" and timeline_years(item["years"])
+        ]
+        cleaned = []
+        for item in items:
+            abbr = nfl_abbr_for_timeline_item(item)
+            years = timeline_years(item["years"])
+            if abbr and years:
+                expected_team = NFL_TEAM_NAMES_BY_ABBR[abbr]
+                expected_key = normalize_timeline_label(expected_team)
+                has_team_duplicate = any(
+                    normalize_timeline_label(team["label"]) == expected_key
+                    and bool(years & timeline_years(team["years"]))
+                    for team in team_items
+                )
+                if has_team_duplicate:
+                    continue
+            cleaned.append(item)
+        return cleaned
+
+    best_by_label_and_years: dict[tuple[str, str], dict[str, Any]] = {}
+    for item in items:
+        dedupe_key = (normalize_timeline_label(item["label"]), item["years"])
+        previous = best_by_label_and_years.get(dedupe_key)
+        if previous is None or timeline_item_rank(item) < timeline_item_rank(previous):
+            best_by_label_and_years[dedupe_key] = item
+    return list(best_by_label_and_years.values())
+
+
 def strip_wiki_markup(value: str) -> str:
     value = re.sub(r"<!--.*?-->", "", value)
     value = re.sub(r"\[\[[^|\]]+\|([^\]]+)\]\]", r"\1", value)
@@ -710,7 +829,7 @@ def attach_player_timelines(player_rows: list[dict[str, Any]]) -> None:
         key = (row["sport"], row["player_id"])
         sections = []
         for section in TIMELINE_SECTION_ORDER:
-            items = timelines[key][section]
+            items = sanitize_timeline_items(section, timelines[key][section])
             if items:
                 items.sort(key=lambda item: (timeline_year_sort(item["years"]), item["label"]))
                 sections.append({"key": section, "label": TIMELINE_SECTION_LABELS[section], "items": items[:60]})
