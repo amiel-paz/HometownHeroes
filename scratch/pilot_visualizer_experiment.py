@@ -168,7 +168,8 @@ def suggest_places(query: str, limit: int = 12) -> dict[str, Any]:
 
     like = f"%{term.lower()}%"
     prefix = f"{term.lower()}%"
-    with connect() as con:
+    con = connect()
+    try:
         rows = con.execute(
             """
             with location_hits as (
@@ -210,6 +211,8 @@ def suggest_places(query: str, limit: int = 12) -> dict[str, Any]:
             """,
             (term, prefix, prefix, like, like, like, like, limit),
         ).fetchall()
+    finally:
+        con.close()
 
     suggestions = []
     seen: set[str] = set()
@@ -391,8 +394,11 @@ def fetch_candidate_events(query: dict[str, Any]) -> list[dict[str, Any]]:
         where distance_mi <= ?
         order by distance_mi, sport, display_name, event_type
     """
-    with connect() as con:
+    con = connect()
+    try:
         return [dict(row) for row in con.execute(sql, params).fetchall()]
+    finally:
+        con.close()
 
 
 def clause_matches_for_event(event_type: str) -> list[str]:
@@ -424,6 +430,17 @@ def clean_number(value: Any) -> Any:
             return None
         return round(value, 4)
     return value
+
+
+def career_length_from_years(start_year: Any, end_year: Any, fallback: Any = None) -> int | None:
+    try:
+        start = int(start_year)
+        end = int(end_year)
+    except (TypeError, ValueError):
+        return fallback
+    if start <= 0 or end < start:
+        return fallback
+    return end - start + 1
 
 
 def render_text_page(title: str, text: str) -> bytes:
@@ -497,7 +514,7 @@ def build_response(query: dict[str, Any]) -> dict[str, Any]:
                 "last_year": None,
                 "pro_start_year": row["pro_start_year"],
                 "pro_end_year": row["pro_end_year"],
-                "pro_career_length": row["pro_location_seasons"],
+                "pro_career_length": career_length_from_years(row["debut_year"], row["final_year"], row["pro_location_seasons"]),
                 "all_star_count": row["all_star_count"],
                 "all_pro_count": row["all_pro_count"],
                 "hof_inducted": bool(row["hof_inducted"]),
@@ -1960,13 +1977,16 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, render_text_page("HometownHeroes Attributions", text), "text/html; charset=utf-8")
             return
         if path == "/api/status":
-            with connect() as con:
+            con = connect()
+            try:
                 status = {
                     "database": repo_path(DB_PATH),
                     "players": con.execute("select count(*) from players").fetchone()[0],
                     "events": con.execute("select count(*) from player_location_events").fetchone()[0],
                     "geocoded_events": con.execute("select count(*) from geocoded_player_location_events").fetchone()[0],
                 }
+            finally:
+                con.close()
             self._json(200, status)
             return
         if path == "/api/place-suggest":

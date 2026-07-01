@@ -248,6 +248,27 @@ class OptionalDatabaseTests(unittest.TestCase):
         self.assertIsNotNone(pro_locations)
         self.assertEqual(pro_locations["pro_start_year"], 1999)
 
+        query = viz.normalize_query(
+            {
+                "place": "Kennewick, WA",
+                "lat": 46.2112,
+                "lon": -119.1372,
+                "radius_mi": 20,
+                "pro_start_year": 1970,
+                "pro_end_year": 2026,
+                "birth_start_year": 1800,
+                "birth_end_year": 2026,
+                "sports": ["NFL"],
+                "groups": [{"clauses": [{"kind": "birthplace"}]}],
+            }
+        )
+        response = viz.build_response(query)
+        anthony_davis = [
+            row for row in response["players"] if row["sport"] == "NFL" and row["player_id"] == "00-0003942"
+        ]
+        self.assertEqual(len(anthony_davis), 1)
+        self.assertEqual(anthony_davis[0]["pro_career_length"], 9)
+
 
 if __name__ == "__main__":
     unittest.main()
