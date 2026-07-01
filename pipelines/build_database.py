@@ -10,7 +10,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import sqlite3
+import unicodedata
 from pathlib import Path
 
 
@@ -52,6 +54,16 @@ def repo_path(path: Path) -> str:
 def stable_id(*parts: object) -> str:
     raw = "|".join("" if p is None else str(p) for p in parts)
     return hashlib.sha1(raw.encode("utf-8", errors="replace")).hexdigest()[:20]
+
+
+def person_match_key(value: object) -> str:
+    if value is None:
+        return ""
+    text = unicodedata.normalize("NFKD", str(value))
+    text = "".join(char for char in text if not unicodedata.combining(char))
+    text = text.lower()
+    text = re.sub(r"[^a-z0-9]+", " ", text)
+    return " ".join(text.split())
 
 
 def require_inputs() -> None:
@@ -169,6 +181,7 @@ def create_schema(con: sqlite3.Connection) -> None:
 
 def register_functions(con: sqlite3.Connection) -> None:
     con.create_function("stable_id", -1, stable_id)
+    con.create_function("person_match_key", 1, person_match_key)
 
 
 def attach_sources(con: sqlite3.Connection) -> None:
@@ -197,12 +210,28 @@ def prepare_nba_alltime_mapping(con: sqlite3.Connection) -> None:
     con.executescript(
         """
         drop table if exists temp.nba_qid_current_ids;
+        drop table if exists temp.nba_current_name_year_ids;
         drop table if exists temp.nba_alltime_player_map;
 
         create temp table nba_qid_current_ids (
             wikidata_qid text primary key,
             current_player_id text
         );
+
+        create temp table nba_current_name_year_ids as
+        select
+            person_match_key(display_name) as match_name,
+            cast(birth_year as integer) as birth_year,
+            min(athlete_id) as current_player_id,
+            count(distinct athlete_id) as player_count
+        from nba.nba_players
+        where athlete_id is not null and athlete_id != ''
+          and display_name is not null and display_name != ''
+          and birth_year is not null and birth_year != ''
+        group by person_match_key(display_name), cast(birth_year as integer);
+
+        create index temp.idx_nba_current_name_year
+        on nba_current_name_year_ids(match_name, birth_year);
 
         insert or ignore into nba_qid_current_ids
         select wikidata_qid, source_player_id
@@ -274,10 +303,14 @@ def prepare_nba_alltime_mapping(con: sqlite3.Connection) -> None:
         select
             p.bbr_id,
             p.wikidata_qid,
-            coalesce(m.current_player_id, 'bbr:' || p.bbr_id) as player_id
+            coalesce(m.current_player_id, n.current_player_id, 'bbr:' || p.bbr_id) as player_id
         from nba_alltime.nba_alltime_players p
         left join nba_qid_current_ids m
           on m.wikidata_qid = p.wikidata_qid
+        left join nba_current_name_year_ids n
+          on n.match_name = person_match_key(p.display_name)
+         and n.birth_year = cast(p.birth_year as integer)
+         and n.player_count = 1
         where p.bbr_id is not null and p.bbr_id != '';
 
         create index temp.idx_nba_alltime_map_bbr on nba_alltime_player_map(bbr_id);
@@ -822,13 +855,17 @@ def load_events(con: sqlite3.Connection) -> None:
     if WIKIDATA_BIRTHPLACE_DB.exists():
         con.executescript(
             """
-            create temp table if not exists existing_born_events as
-            select sport, player_id
-            from player_location_events
-            where event_type = 'born';
+            drop table if exists temp.existing_geocoded_born_events;
+            create temp table existing_geocoded_born_events as
+            select e.sport, e.player_id
+            from player_location_events e
+            join locations l on l.location_id = e.location_id
+            where e.event_type = 'born'
+              and l.latitude is not null
+              and l.longitude is not null;
 
-            create index if not exists temp.idx_existing_born_events
-            on existing_born_events(sport, player_id);
+            create index if not exists temp.idx_existing_geocoded_born_events
+            on existing_geocoded_born_events(sport, player_id);
 
             insert or replace into player_location_events
             (event_id, sport, player_id, event_type, location_id, start_year, end_year, duration_years, source, source_key, confidence, notes)
@@ -851,7 +888,7 @@ def load_events(con: sqlite3.Connection) -> None:
               and b.birthplace_qid is not null and b.birthplace_qid != ''
               and not exists (
                   select 1
-                  from existing_born_events e
+                  from existing_geocoded_born_events e
                   where e.sport = b.sport
                     and e.player_id = b.source_player_id
               );
@@ -860,13 +897,17 @@ def load_events(con: sqlite3.Connection) -> None:
     if NBA_ALLTIME_DB.exists():
         con.executescript(
             """
-            create temp table if not exists existing_born_events as
-            select sport, player_id
-            from player_location_events
-            where event_type = 'born';
+            drop table if exists temp.existing_geocoded_born_events;
+            create temp table existing_geocoded_born_events as
+            select e.sport, e.player_id
+            from player_location_events e
+            join locations l on l.location_id = e.location_id
+            where e.event_type = 'born'
+              and l.latitude is not null
+              and l.longitude is not null;
 
-            create index if not exists temp.idx_existing_born_events
-            on existing_born_events(sport, player_id);
+            create index if not exists temp.idx_existing_geocoded_born_events
+            on existing_geocoded_born_events(sport, player_id);
 
             insert or replace into player_location_events
             (event_id, sport, player_id, event_type, location_id, start_year, end_year, duration_years, source, source_key, confidence, notes)
@@ -889,7 +930,7 @@ def load_events(con: sqlite3.Connection) -> None:
             where b.birthplace_qid is not null and b.birthplace_qid != ''
               and not exists (
                   select 1
-                  from existing_born_events e
+                  from existing_geocoded_born_events e
                   where e.sport = 'NBA'
                     and e.player_id = m.player_id
               );

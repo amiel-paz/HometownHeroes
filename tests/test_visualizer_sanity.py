@@ -57,6 +57,12 @@ class VisualizerTaxonomyTests(unittest.TestCase):
             ["attended_college", "attended_high_school", "born", "played_college"],
         )
 
+    def test_mobile_resize_does_not_always_collapse_expanded_filters(self) -> None:
+        self.assertIn("let wasCompactLayout = isCompactLayout();", viz.HTML)
+        self.assertIn("if (compact === wasCompactLayout)", viz.HTML)
+        self.assertIn("runQuery({ collapseCompact: true })", viz.HTML)
+        self.assertIn("options.collapseCompact === true", viz.HTML)
+
 
 class AttributionTests(unittest.TestCase):
     def test_public_attributions_are_linked_and_named(self) -> None:
@@ -311,6 +317,59 @@ class OptionalDatabaseTests(unittest.TestCase):
         self.assertNotIn("New Mexico State University-Main Campus", college_labels)
         self.assertIn("Miami Dolphins", pro_labels)
         self.assertNotIn("MIA / Dolphin Stadium", pro_labels)
+
+    @unittest.skipUnless(viz.DB_PATH.exists(), "local scratch database is not present")
+    def test_sombor_serbia_birthplace_query_finds_nikola_jokic(self) -> None:
+        con = viz.connect()
+        try:
+            serbia_nba_birthplaces = con.execute(
+                """
+                select count(distinct e.player_id)
+                from geocoded_player_location_events e
+                join locations l using (location_id)
+                where e.sport = 'NBA'
+                  and e.event_type = 'born'
+                  and l.country = 'Serbia'
+                """
+            ).fetchone()[0]
+            jokic_birthplace = con.execute(
+                """
+                select l.label, l.country, l.latitude, l.longitude
+                from geocoded_player_location_events e
+                join locations l using (location_id)
+                where e.sport = 'NBA'
+                  and e.player_id = '3112335'
+                  and e.event_type = 'born'
+                """
+            ).fetchone()
+        finally:
+            con.close()
+
+        self.assertGreaterEqual(serbia_nba_birthplaces, 30)
+        self.assertIsNotNone(jokic_birthplace)
+        self.assertEqual(jokic_birthplace["label"], "Sombor, Sombor City")
+        self.assertEqual(jokic_birthplace["country"], "Serbia")
+
+        query = viz.normalize_query(
+            {
+                "place": "Sombor, Serbia",
+                "lat": 45.78,
+                "lon": 19.12,
+                "radius_mi": 20,
+                "pro_start_year": 1970,
+                "pro_end_year": 2026,
+                "birth_start_year": 1800,
+                "birth_end_year": 2026,
+                "sports": ["NBA"],
+                "groups": [{"clauses": [{"kind": "birthplace"}]}],
+            }
+        )
+        response = viz.build_response(query)
+        jokic = [row for row in response["players"] if row["sport"] == "NBA" and row["player_id"] == "3112335"]
+        self.assertEqual(len(jokic), 1)
+        timeline = {section["key"]: section["items"] for section in jokic[0]["timeline"]}
+        birthplace_labels = [item["label"] for item in timeline["birthplace"]]
+        self.assertEqual(birthplace_labels, ["Sombor, Sombor City"])
 
 
 if __name__ == "__main__":

@@ -590,6 +590,9 @@ def nfl_abbr_for_timeline_item(item: dict[str, Any]) -> str | None:
 
 
 def sanitize_timeline_items(section: str, items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    if any(item["label"] != "Location NA" for item in items):
+        items = [item for item in items if item["label"] != "Location NA"]
+
     if section == "pro":
         team_items = [
             item
@@ -2026,7 +2029,7 @@ HTML = r"""
       center = { lat: Number(suggestion.lat), lon: Number(suggestion.lon) };
       map.setView([center.lat, center.lon], 10);
       closePlaceSuggestions();
-      runQuery();
+      runQuery({ collapseCompact: true });
     }
 
     function renderPlaceSuggestions(suggestions) {
@@ -2315,10 +2318,10 @@ HTML = r"""
       document.getElementById('mapStatus').textContent = 'Click a colored dot to filter the Players list.';
     }
 
-    async function runQuery() {
+    async function runQuery(options = {}) {
       updateCenterLayers();
       document.getElementById('meta').textContent = 'Running query...';
-      if (isCompactLayout()) setQueryCollapsed(true);
+      if (isCompactLayout() && options.collapseCompact === true) setQueryCollapsed(true);
       try {
         const data = await postJSON('/api/search', currentQuery());
         renderResults(data);
@@ -2334,7 +2337,7 @@ HTML = r"""
         const result = await postJSON('/api/geocode', { place });
         center = { lat: result.lat, lon: result.lon };
         map.setView([center.lat, center.lon], 10);
-        await runQuery();
+        await runQuery({ collapseCompact: true });
       } catch (error) {
         document.getElementById('meta').textContent = error.message;
       }
@@ -2344,7 +2347,7 @@ HTML = r"""
       groups.push(['birthplace']);
       renderGroups();
     });
-    document.getElementById('run').addEventListener('click', runQuery);
+    document.getElementById('run').addEventListener('click', () => runQuery({ collapseCompact: true }));
     document.getElementById('geocode').addEventListener('click', geocodeTypedPlace);
     document.getElementById('place').addEventListener('input', queuePlaceSuggestions);
     document.getElementById('place').addEventListener('focus', queuePlaceSuggestions);
@@ -2392,22 +2395,29 @@ HTML = r"""
     map.on('click', event => {
       center = { lat: event.latlng.lat, lon: event.latlng.lng };
       map.setView([center.lat, center.lon], map.getZoom());
-      runQuery();
+      runQuery({ collapseCompact: true });
     });
 
     renderGroups();
     renderLegend();
     applyTheme(currentTheme);
-    setQueryCollapsed(isCompactLayout());
+    let wasCompactLayout = isCompactLayout();
+    setQueryCollapsed(wasCompactLayout);
     window.addEventListener('resize', () => {
-      if (isCompactLayout()) {
+      const compact = isCompactLayout();
+      if (compact === wasCompactLayout) {
+        setTimeout(() => map.invalidateSize(), 100);
+        return;
+      }
+      wasCompactLayout = compact;
+      if (compact) {
         setQueryCollapsed(true);
       } else {
         setQueryCollapsed(false);
       }
     });
     updateCenterLayers();
-    runQuery();
+    runQuery({ collapseCompact: true });
   </script>
 </body>
 </html>
