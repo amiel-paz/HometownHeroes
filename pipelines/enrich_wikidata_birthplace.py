@@ -65,8 +65,9 @@ def pfr_variants(pfr_id: str) -> list[str]:
     if not pfr_id:
         return []
     if "/" not in pfr_id:
-        return [f"{pfr_id[0]}/{pfr_id}"]
-    return [pfr_id]
+        return sorted({f"{pfr_id[0]}/{pfr_id}", f"{pfr_id[0].upper()}/{pfr_id}"})
+    prefix, rest = pfr_id.split("/", 1)
+    return sorted({pfr_id, f"{prefix.upper()}/{rest}"})
 
 
 def load_mlb_wikidata_ids() -> list[dict[str, str]]:

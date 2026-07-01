@@ -1,0 +1,21 @@
+[
+  {
+    "sport": "NFL",
+    "player_id": "00-0036972",
+    "event_type": "born",
+    "location_id": "curated_nfl_00_0036972_birthplace",
+    "location_kind": "birthplace",
+    "label": "Jacksonville, FL",
+    "city": "Jacksonville",
+    "state": "FL",
+    "country": "USA",
+    "latitude": 30.336864,
+    "longitude": -81.661603,
+    "geocode_status": "matched",
+    "geocode_source": "Census Gazetteer place centroid",
+    "source": "Wikipedia infobox birth_place; curated Wikidata conflict override",
+    "source_key": "Mac Jones",
+    "confidence": "source_reported_cross_checked",
+    "notes": "Cached Wikipedia infobox lists Jacksonville, Florida. This overrides an implausible Wikidata P19 value of Les Angles, France for the same player."
+  }
+]

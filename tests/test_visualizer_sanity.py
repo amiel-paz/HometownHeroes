@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import gzip
 import importlib.util
+import json
 import shutil
 import sqlite3
 import subprocess
@@ -12,6 +13,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 VISUALIZER_PATH = ROOT / "scratch" / "pilot_visualizer_experiment.py"
+BIRTHPLACE_PIPELINE_PATH = ROOT / "pipelines" / "enrich_wikidata_birthplace.py"
 
 
 def load_visualizer():
@@ -23,6 +25,17 @@ def load_visualizer():
 
 
 viz = load_visualizer()
+
+
+def load_birthplace_pipeline():
+    spec = importlib.util.spec_from_file_location("enrich_wikidata_birthplace", BIRTHPLACE_PIPELINE_PATH)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+birthplace_pipeline = load_birthplace_pipeline()
 
 
 class VisualizerTaxonomyTests(unittest.TestCase):
@@ -62,6 +75,10 @@ class VisualizerTaxonomyTests(unittest.TestCase):
         self.assertIn("if (compact === wasCompactLayout)", viz.HTML)
         self.assertIn("runQuery({ collapseCompact: true })", viz.HTML)
         self.assertIn("options.collapseCompact === true", viz.HTML)
+
+    def test_nfl_pfr_variants_include_uppercase_directory_prefix(self) -> None:
+        self.assertEqual(birthplace_pipeline.pfr_variants("andermor01"), ["A/andermor01", "a/andermor01"])
+        self.assertEqual(birthplace_pipeline.pfr_variants("a/andermor01"), ["A/andermor01", "a/andermor01"])
 
 
 class AttributionTests(unittest.TestCase):
@@ -125,6 +142,29 @@ class RenderDeployTests(unittest.TestCase):
             finally:
                 con.close()
         self.assertGreater(usable, 1000)
+
+
+class BirthplaceAuditTests(unittest.TestCase):
+    def test_birthplace_audit_and_fixer_scripts_are_documented(self) -> None:
+        readme = (ROOT / "pipelines" / "README.md").read_text(encoding="utf-8")
+        for snippet in (
+            "pipelines/audit_birthplace_coverage.py",
+            "scratch/birthplace_coverage_audit.sqlite",
+            "scratch/birthplace_conflict_review_candidates.json",
+            "pipelines/apply_birthplace_audit_fixes.py",
+            "data/curation/birthplace_overrides.json",
+            "--include-complete-birthplaces",
+        ):
+            self.assertIn(snippet, readme)
+
+    def test_curated_birthplace_overrides_include_mac_jones_conflict_fix(self) -> None:
+        path = ROOT / "data" / "curation" / "birthplace_overrides.json"
+        rows = json.loads(path.read_text(encoding="utf-8"))
+        mac_rows = [row for row in rows if row["sport"] == "NFL" and row["player_id"] == "00-0036972"]
+        self.assertEqual(len(mac_rows), 1)
+        self.assertEqual(mac_rows[0]["label"], "Jacksonville, FL")
+        self.assertEqual(mac_rows[0]["event_type"], "born")
+        self.assertIn("Wikidata conflict override", mac_rows[0]["source"])
 
 
 class RepositoryScrubTests(unittest.TestCase):
@@ -397,6 +437,105 @@ class OptionalDatabaseTests(unittest.TestCase):
         pro_labels = [item["label"] for item in timeline["pro"]]
         self.assertIn("Oklahoma City Thunder / Paycom Center", pro_labels)
         self.assertNotIn("NBA team 25 / Paycom Center", pro_labels)
+
+    @unittest.skipUnless(viz.DB_PATH.exists(), "local scratch database is not present")
+    def test_struer_denmark_birthplace_query_finds_morten_andersen(self) -> None:
+        con = viz.connect()
+        try:
+            morten_birthplace = con.execute(
+                """
+                select l.label, l.country, e.start_year
+                from geocoded_player_location_events e
+                join locations l using (location_id)
+                where e.sport = 'NFL'
+                  and e.player_id = '00-0000282'
+                  and e.event_type = 'born'
+                """
+            ).fetchone()
+        finally:
+            con.close()
+
+        self.assertIsNotNone(morten_birthplace)
+        self.assertEqual(morten_birthplace["label"], "Struer Municipality, Central Denmark")
+        self.assertEqual(morten_birthplace["country"], "Denmark")
+        self.assertEqual(morten_birthplace["start_year"], 1960)
+
+        query = viz.normalize_query(
+            {
+                "place": "Struer, Denmark",
+                "lat": 56.504,
+                "lon": 8.599,
+                "radius_mi": 25,
+                "pro_start_year": 1970,
+                "pro_end_year": 2026,
+                "birth_start_year": 1800,
+                "birth_end_year": 2026,
+                "sports": ["NFL"],
+                "groups": [{"clauses": [{"kind": "birthplace"}]}],
+            }
+        )
+        response = viz.build_response(query)
+        morten = [row for row in response["players"] if row["sport"] == "NFL" and row["player_id"] == "00-0000282"]
+        self.assertEqual(len(morten), 1)
+        self.assertEqual(morten[0]["display_name"], "Morten Andersen")
+        self.assertIn("Struer Municipality, Central Denmark", morten[0]["matched_locations"])
+
+    @unittest.skipUnless(viz.DB_PATH.exists(), "local scratch database is not present")
+    def test_mac_jones_birthplace_uses_curated_wikipedia_override(self) -> None:
+        con = viz.connect()
+        try:
+            birthplace = con.execute(
+                """
+                select l.label, l.country, e.source
+                from player_location_events e
+                join locations l using (location_id)
+                where e.sport = 'NFL'
+                  and e.player_id = '00-0036972'
+                  and e.event_type = 'born'
+                """
+            ).fetchone()
+        finally:
+            con.close()
+
+        self.assertIsNotNone(birthplace)
+        self.assertEqual(birthplace["label"], "Jacksonville, FL")
+        self.assertEqual(birthplace["country"], "USA")
+        self.assertIn("curated Wikidata conflict override", birthplace["source"])
+
+        jacksonville_query = viz.normalize_query(
+            {
+                "place": "Jacksonville, FL",
+                "lat": 30.336864,
+                "lon": -81.661603,
+                "radius_mi": 25,
+                "pro_start_year": 1970,
+                "pro_end_year": 2026,
+                "birth_start_year": 1800,
+                "birth_end_year": 2026,
+                "sports": ["NFL"],
+                "groups": [{"clauses": [{"kind": "birthplace"}]}],
+            }
+        )
+        france_query = viz.normalize_query(
+            {
+                "place": "Les Angles, France",
+                "lat": 43.082777777,
+                "lon": 0.006944444,
+                "radius_mi": 25,
+                "pro_start_year": 1970,
+                "pro_end_year": 2026,
+                "birth_start_year": 1800,
+                "birth_end_year": 2026,
+                "sports": ["NFL"],
+                "groups": [{"clauses": [{"kind": "birthplace"}]}],
+            }
+        )
+        jacksonville_players = [
+            row for row in viz.build_response(jacksonville_query)["players"] if row["player_id"] == "00-0036972"
+        ]
+        france_players = [row for row in viz.build_response(france_query)["players"] if row["player_id"] == "00-0036972"]
+        self.assertEqual(len(jacksonville_players), 1)
+        self.assertEqual(france_players, [])
 
 
 if __name__ == "__main__":

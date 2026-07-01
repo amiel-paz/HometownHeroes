@@ -107,6 +107,62 @@ league such as the NBA, ABA, BAA, or NBL. Location coordinates prefer team
 headquarters/city over current arena coordinates to reduce historical
 anachronism.
 
+## Birthplace/Date Audit And Fixes
+
+To audit missing or suspicious player birth dates and birthplaces across the
+current unified database:
+
+```bash
+python3 pipelines/audit_birthplace_coverage.py --chunk-size 200 --max-chunks 0 --sleep-seconds 0.5
+```
+
+The audit writes `scratch/birthplace_coverage_audit.sqlite` and
+`scratch/birthplace_coverage_audit_summary.json`. It also writes
+`scratch/birthplace_conflict_review_candidates.json` for source-vs-app
+birthplace disagreements. Raw Wikidata responses are cached under
+`data/raw/wikidata/birthplace_audit/`, so interrupted runs can resume without
+refetching completed chunks. To inspect only local/cached Wikipedia infobox
+coverage without network calls:
+
+```bash
+python3 pipelines/audit_birthplace_coverage.py --skip-wikidata
+```
+
+By default, Wikidata conflict checks are limited to the players already being
+audited for missing coverage. To audit Wikidata birthplace disagreements even
+for players who already have a geocoded birthplace:
+
+```bash
+python3 pipelines/audit_birthplace_coverage.py --include-complete-birthplaces
+```
+
+When an existing app birthplace conflicts with a cached Wikipedia infobox,
+treat Wikipedia as the preferred review source. Do not auto-apply those rows:
+copy reviewed, geocoded corrections into a curated override JSON first.
+
+To apply conservative post-audit fixes:
+
+```bash
+python3 pipelines/apply_birthplace_audit_fixes.py \
+  --apply-wikidata-birthdates \
+  --apply-wikidata-birthplaces \
+  --rebuild
+```
+
+The fixer only auto-applies missing-data fills from structured Wikidata rows.
+Conflicting birthplace corrections must be reviewed and merged through a JSON
+file:
+
+```bash
+python3 pipelines/apply_birthplace_audit_fixes.py \
+  --reviewed-overrides scratch/reviewed_birthplace_overrides.json \
+  --rebuild
+```
+
+Tracked curated overrides live in `data/curation/birthplace_overrides.json`.
+They are intentionally small and source-explained; use them for cases where a
+structured source is demonstrably wrong or ambiguous.
+
 ## Year Semantics
 
 - `played_pro` rows may carry `start_year`, `end_year`, and `duration_years` only when a source provides season-level professional participation. The unified database exposes those rows through `pro_career_summary`.

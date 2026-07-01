@@ -31,6 +31,8 @@ WIKIDATA_BIRTHPLACE_DB = SCRATCH / "wikidata_birthplace_enrichment.sqlite"
 NFL_STADIUM_DB = SCRATCH / "nfl_stadium_enrichment.sqlite"
 HONORS_DB = SCRATCH / "player_honors.sqlite"
 PLAYER_MEDIA_DB = SCRATCH / "player_media.sqlite"
+BIRTH_AUDIT_FIXES_DB = SCRATCH / "birthplace_audit_fixes.sqlite"
+CURATED_BIRTHPLACE_OVERRIDES_PATH = ROOT / "data" / "curation" / "birthplace_overrides.json"
 
 NFL_CAREER_YEAR_OVERRIDES = [
     {
@@ -41,7 +43,6 @@ NFL_CAREER_YEAR_OVERRIDES = [
         "notes": "Use first sourced pro team association for profile debut display; nflverse rookie_season remains the conservative first stat season.",
     }
 ]
-
 
 def sql_quote(value: str) -> str:
     return "'" + value.replace("'", "''") + "'"
@@ -202,6 +203,51 @@ def attach_sources(con: sqlite3.Connection) -> None:
         con.execute(f"attach database {sql_quote(str(HONORS_DB))} as honors")
     if PLAYER_MEDIA_DB.exists():
         con.execute(f"attach database {sql_quote(str(PLAYER_MEDIA_DB))} as media")
+
+
+def load_curated_birthplace_overrides() -> list[dict[str, object]]:
+    if not CURATED_BIRTHPLACE_OVERRIDES_PATH.exists():
+        return []
+    data = json.loads(CURATED_BIRTHPLACE_OVERRIDES_PATH.read_text(encoding="utf-8"))
+    if not isinstance(data, list):
+        raise ValueError(f"{repo_path(CURATED_BIRTHPLACE_OVERRIDES_PATH)} must contain a JSON list")
+    required = {
+        "sport",
+        "player_id",
+        "event_type",
+        "location_id",
+        "location_kind",
+        "label",
+        "geocode_status",
+        "source",
+        "confidence",
+    }
+    rows = []
+    for index, row in enumerate(data):
+        if not isinstance(row, dict):
+            raise ValueError(f"birthplace override {index} must be an object")
+        missing = sorted(required - set(row))
+        if missing:
+            raise ValueError(f"birthplace override {index} is missing: {', '.join(missing)}")
+        rows.append(row)
+    return rows
+
+
+def load_birth_audit_fix_rows(table: str) -> list[sqlite3.Row]:
+    if not BIRTH_AUDIT_FIXES_DB.exists():
+        return []
+    fix_con = sqlite3.connect(BIRTH_AUDIT_FIXES_DB)
+    fix_con.row_factory = sqlite3.Row
+    try:
+        has_table = fix_con.execute(
+            "select 1 from sqlite_master where type = 'table' and name = ?",
+            (table,),
+        ).fetchone()
+        if not has_table:
+            return []
+        return list(fix_con.execute(f"select * from {table}"))
+    finally:
+        fix_con.close()
 
 
 def prepare_nba_alltime_mapping(con: sqlite3.Connection) -> None:
@@ -460,6 +506,22 @@ def load_players(con: sqlite3.Connection) -> None:
               and existing.player_id is null;
             """
         )
+
+
+def apply_birthdate_overrides(con: sqlite3.Connection) -> None:
+    rows = [dict(row) for row in load_birth_audit_fix_rows("player_birthdate_overrides")]
+    if not rows:
+        return
+    con.executemany(
+        """
+        update players
+        set birth_date = coalesce(nullif(:birth_date, ''), birth_date),
+            birth_year = coalesce(:birth_year, birth_year)
+        where sport = :sport
+          and player_id = :player_id
+        """,
+        rows,
+    )
 
 
 def load_locations(con: sqlite3.Connection) -> None:
@@ -1007,6 +1069,97 @@ def load_events(con: sqlite3.Connection) -> None:
         )
 
 
+def apply_curated_birthplace_overrides(con: sqlite3.Connection) -> None:
+    overrides = load_curated_birthplace_overrides()
+    audit_overrides = [dict(row) for row in load_birth_audit_fix_rows("birthplace_overrides")]
+    overrides.extend(audit_overrides)
+    if not overrides:
+        return
+    con.execute(
+        """
+        create temp table curated_birthplace_overrides (
+            sport text not null,
+            player_id text not null,
+            event_type text not null,
+            location_id text not null,
+            location_kind text not null,
+            label text not null,
+            city text,
+            state text,
+            country text,
+            latitude real,
+            longitude real,
+            geocode_status text not null,
+            geocode_source text,
+            source text not null,
+            source_key text,
+            confidence text not null,
+            notes text
+        )
+        """
+    )
+    con.executemany(
+        """
+        insert into curated_birthplace_overrides
+        (sport, player_id, event_type, location_id, location_kind, label, city, state, country,
+         latitude, longitude, geocode_status, geocode_source, source, source_key, confidence, notes)
+        values
+        (:sport, :player_id, :event_type, :location_id, :location_kind, :label, :city, :state, :country,
+         :latitude, :longitude, :geocode_status, :geocode_source, :source, :source_key, :confidence, :notes)
+        """,
+        overrides,
+    )
+    con.executescript(
+        """
+        insert or replace into locations
+        (location_id, location_kind, label, city, state, country, latitude, longitude,
+         geocode_status, geocode_source, source, source_key)
+        select
+            location_id,
+            location_kind,
+            label,
+            city,
+            state,
+            country,
+            latitude,
+            longitude,
+            geocode_status,
+            geocode_source,
+            source,
+            source_key
+        from curated_birthplace_overrides;
+
+        delete from player_location_events
+        where event_type = 'born'
+          and exists (
+              select 1
+              from curated_birthplace_overrides o
+              where o.sport = player_location_events.sport
+                and o.player_id = player_location_events.player_id
+          );
+
+        insert or replace into player_location_events
+        (event_id, sport, player_id, event_type, location_id, start_year, end_year,
+         duration_years, source, source_key, confidence, notes)
+        select
+            stable_id(o.sport, o.player_id, o.event_type, o.location_id),
+            o.sport,
+            o.player_id,
+            o.event_type,
+            o.location_id,
+            p.birth_year,
+            p.birth_year,
+            null,
+            o.source,
+            o.source_key,
+            o.confidence,
+            o.notes
+        from curated_birthplace_overrides o
+        join players p on p.sport = o.sport and p.player_id = o.player_id;
+        """
+    )
+
+
 def load_honors(con: sqlite3.Connection) -> None:
     if not HONORS_DB.exists():
         return
@@ -1246,8 +1399,10 @@ def main() -> None:
     attach_sources(con)
     prepare_nba_alltime_mapping(con)
     load_players(con)
+    apply_birthdate_overrides(con)
     load_locations(con)
     load_events(con)
+    apply_curated_birthplace_overrides(con)
     load_honors(con)
     load_media(con)
     create_indexes_and_views(con)
