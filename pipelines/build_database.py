@@ -30,6 +30,16 @@ NFL_STADIUM_DB = SCRATCH / "nfl_stadium_enrichment.sqlite"
 HONORS_DB = SCRATCH / "player_honors.sqlite"
 PLAYER_MEDIA_DB = SCRATCH / "player_media.sqlite"
 
+NFL_CAREER_YEAR_OVERRIDES = [
+    {
+        "player_id": "00-0003942",
+        "debut_year": 1992,
+        "final_year": None,
+        "source": "Pro Football Reference identifier DaviAn23; 1992 Houston Oilers roster/draft association",
+        "notes": "Use first sourced pro team association for profile debut display; nflverse rookie_season remains the conservative first stat season.",
+    }
+]
+
 
 def sql_quote(value: str) -> str:
     return "'" + value.replace("'", "''") + "'"
@@ -277,6 +287,25 @@ def prepare_nba_alltime_mapping(con: sqlite3.Connection) -> None:
 
 
 def load_players(con: sqlite3.Connection) -> None:
+    con.execute(
+        """
+        create temp table nfl_career_year_overrides (
+            player_id text primary key,
+            debut_year integer,
+            final_year integer,
+            source text,
+            notes text
+        )
+        """
+    )
+    con.executemany(
+        """
+        insert into nfl_career_year_overrides
+        (player_id, debut_year, final_year, source, notes)
+        values (:player_id, :debut_year, :final_year, :source, :notes)
+        """,
+        NFL_CAREER_YEAR_OVERRIDES,
+    )
     con.executescript(
         """
         insert or ignore into players
@@ -302,11 +331,17 @@ def load_players(con: sqlite3.Connection) -> None:
             display_name,
             nullif(birth_date, ''),
             cast(substr(nullif(birth_date, ''), 1, 4) as integer),
-            null,
-            null,
+            coalesce(o.debut_year, cast(nullif(rookie_season, '') as integer)),
+            coalesce(o.final_year, cast(nullif(last_season, '') as integer)),
             pfr_id,
-            'nflverse players profile; canonical pro years not loaded'
+            case
+                when o.player_id is not null
+                    then 'nflverse players profile + curated career-year override'
+                else 'nflverse players profile'
+            end
         from nfl.nfl_players
+        left join nfl_career_year_overrides o
+          on o.player_id = coalesce(nullif(gsis_id, ''), pfr_id)
         where coalesce(nullif(gsis_id, ''), nullif(pfr_id, '')) is not null;
         """
     )

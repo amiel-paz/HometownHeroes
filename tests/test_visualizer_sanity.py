@@ -189,6 +189,65 @@ class OptionalDatabaseTests(unittest.TestCase):
         self.assertGreaterEqual(mlb_born, 311)
         self.assertGreaterEqual(total, 328)
 
+    @unittest.skipUnless(viz.DB_PATH.exists(), "local scratch database is not present")
+    def test_mlb_us_birthplace_fallbacks_cover_common_aliases(self) -> None:
+        expected_minimums = {
+            ("Brooklyn", "NY"): 250,
+            ("Bronx", "NY"): 30,
+            ("Queens", "NY"): 10,
+            ("Van Nuys", "CA"): 15,
+            ("Roxbury", "MA"): 10,
+        }
+        con = viz.connect()
+        try:
+            rows = con.execute(
+                """
+                select city, state, count(distinct player_id) as players
+                from geocoded_player_location_events
+                where sport = 'MLB'
+                  and event_type = 'born'
+                  and (city, state) in (
+                    ('Brooklyn', 'NY'),
+                    ('Bronx', 'NY'),
+                    ('Queens', 'NY'),
+                    ('Van Nuys', 'CA'),
+                    ('Roxbury', 'MA')
+                  )
+                group by city, state;
+                """
+            ).fetchall()
+        finally:
+            con.close()
+        observed = {(row["city"], row["state"]): row["players"] for row in rows}
+        for key, minimum in expected_minimums.items():
+            self.assertGreaterEqual(observed.get(key, 0), minimum, key)
+
+    @unittest.skipUnless(viz.DB_PATH.exists(), "local scratch database is not present")
+    def test_nfl_profile_dates_prefer_canonical_career_years(self) -> None:
+        con = viz.connect()
+        try:
+            player = con.execute(
+                """
+                select debut_year, final_year
+                from players
+                where sport = 'NFL' and player_id = '00-0003942'
+                """
+            ).fetchone()
+            pro_locations = con.execute(
+                """
+                select pro_start_year, pro_end_year
+                from pro_career_summary
+                where sport = 'NFL' and player_id = '00-0003942'
+                """
+            ).fetchone()
+        finally:
+            con.close()
+        self.assertIsNotNone(player)
+        self.assertEqual(player["debut_year"], 1992)
+        self.assertEqual(player["final_year"], 2000)
+        self.assertIsNotNone(pro_locations)
+        self.assertEqual(pro_locations["pro_start_year"], 1999)
+
 
 if __name__ == "__main__":
     unittest.main()

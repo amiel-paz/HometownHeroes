@@ -93,6 +93,7 @@ COUNTRY_ALIASES = {
     "scotland": "GB",
     "wales": "GB",
     "northern ireland": "GB",
+    "west germany": "DE",
     "south korea": "KR",
     "korea": "KR",
     "curacao": "CW",
@@ -108,6 +109,24 @@ PUERTO_RICO_CENTROID = {
     "longitude": -66.5901,
     "source_label": "Puerto Rico",
     "source": "Puerto Rico island centroid fallback",
+    "geonameid": None,
+}
+
+US_VIRGIN_ISLANDS_CENTROID = {
+    "status": "matched",
+    "latitude": 18.3358,
+    "longitude": -64.8963,
+    "source_label": "U.S. Virgin Islands",
+    "source": "U.S. Virgin Islands territory centroid fallback",
+    "geonameid": None,
+}
+
+ST_THOMAS_CENTROID = {
+    "status": "matched",
+    "latitude": 18.3381,
+    "longitude": -64.8941,
+    "source_label": "St. Thomas, U.S. Virgin Islands",
+    "source": "U.S. Virgin Islands island centroid fallback",
     "geonameid": None,
 }
 
@@ -271,6 +290,20 @@ def country_to_iso(country: str | None, countries: dict[str, dict[str, str]]) ->
 def is_puerto_rico(country: str | None, state: str | None = None) -> bool:
     aliases = {"p r", "pr", "pri", "puerto rico"}
     return ascii_norm(country) in aliases or ascii_norm(state) in aliases
+
+
+def is_us_virgin_islands(country: str | None, state: str | None = None) -> bool:
+    aliases = {"u s virgin islands", "us virgin islands", "united states virgin islands", "virgin islands", "vi"}
+    return ascii_norm(country) in aliases or ascii_norm(state) in aliases
+
+
+def us_virgin_islands_fallback(city: str | None, state: str | None, country: str | None) -> dict[str, object] | None:
+    if not is_us_virgin_islands(country, state):
+        return None
+    place_key = " ".join(part for part in (ascii_norm(city), ascii_norm(state)) if part)
+    if "st thomas" in place_key or "saint thomas" in place_key:
+        return ST_THOMAS_CENTROID
+    return US_VIRGIN_ISLANDS_CENTROID
 
 
 def load_geonames_admin1() -> dict[tuple[str, str], set[str]]:
@@ -509,7 +542,7 @@ def main() -> None:
         loc = resolve_city(census_places, city, state, country)
         source = "Census Gazetteer place centroid" if loc["status"] == "matched" else None
         geonameid = None
-        if loc["status"] != "matched" and (country or "").upper() not in {"USA", "US"}:
+        if loc["status"] != "matched":
             global_loc = resolve_global_city(geonames_cities, geonames_countries, city, state, country)
             if global_loc["status"] == "matched":
                 loc = global_loc
@@ -517,6 +550,11 @@ def main() -> None:
                 geonameid = global_loc["geonameid"]
         if loc["status"] != "matched" and is_puerto_rico(country, state):
             loc = PUERTO_RICO_CENTROID
+            source = loc["source"]
+            geonameid = loc["geonameid"]
+        usvi_fallback = us_virgin_islands_fallback(city, state, country)
+        if loc["status"] != "matched" and usvi_fallback:
+            loc = usvi_fallback
             source = loc["source"]
             geonameid = loc["geonameid"]
         birth_locations.append(
