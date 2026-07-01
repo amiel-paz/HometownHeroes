@@ -14,6 +14,7 @@ import html as html_lib
 import json
 import math
 import os
+import re
 import sqlite3
 import urllib.parse
 import urllib.request
@@ -26,6 +27,8 @@ ROOT = Path(__file__).resolve().parents[1]
 DB_PATH = Path(os.environ.get("HH_DB_PATH", ROOT / "scratch" / "HometownHeroes.sqlite"))
 GEOCODE_CACHE = ROOT / "scratch" / "place_geocode_cache.sqlite"
 ATTRIBUTIONS_PATH = ROOT / "ATTRIBUTIONS.md"
+HONORS_DB = ROOT / "scratch" / "player_honors.sqlite"
+NFL_WIKIPEDIA_PAGES = ROOT / "data" / "raw" / "wikipedia" / "nfl_honors"
 
 EVENT_TYPE_GROUPS = {
     "birthplace": ["born"],
@@ -55,6 +58,18 @@ EVENT_COLORS = {
     "college": "#7c3aed",
     "played_pro": "#dc2626",
 }
+
+TIMELINE_SECTION_LABELS = {
+    "birthplace": "Birthplace",
+    "high_school": "High School",
+    "college": "College",
+    "school": "School",
+    "pro": "Pro Teams / Venues",
+}
+
+TIMELINE_SECTION_ORDER = ["birthplace", "high_school", "college", "school", "pro"]
+
+NFL_PASTTEAMS_BY_TITLE: dict[str, list[dict[str, str]]] | None = None
 
 DEFAULT_QUERY = {
     "place": "San Jose, CA",
@@ -443,6 +458,265 @@ def career_length_from_years(start_year: Any, end_year: Any, fallback: Any = Non
     return end - start + 1
 
 
+def timeline_section_for_event(event_type: str) -> str:
+    if event_type == "born":
+        return "birthplace"
+    if event_type == "attended_high_school":
+        return "high_school"
+    if event_type in {"attended_college", "played_college"}:
+        return "college"
+    if event_type == "played_pro":
+        return "pro"
+    return "school"
+
+
+def year_span_label(start_year: Any, end_year: Any) -> str:
+    if start_year is None and end_year is None:
+        return "Years NA"
+    if start_year is None:
+        return f"through {end_year}"
+    if end_year is None or end_year == start_year:
+        return str(start_year)
+    return f"{start_year}-{end_year}"
+
+
+def timeline_year_sort(value: str) -> int:
+    match = re.search(r"\b(?:19|20)\d{2}\b", value or "")
+    return int(match.group(0)) if match else 9999
+
+
+def timeline_item_label(row: sqlite3.Row) -> str:
+    label = row["location_label"] or "Location NA"
+    if row["event_type"] != "played_pro":
+        return label
+
+    source_key = row["source_key"] or ""
+    parts = source_key.split("|")
+    if row["sport"] == "NFL" and parts and parts[0]:
+        return f"{parts[0]} / {label}" if label else parts[0]
+    if row["sport"] == "NBA" and row["source"].startswith("Wikidata P54"):
+        return label
+    if row["sport"] == "NBA" and parts and parts[0]:
+        return f"Team {parts[0]} / {label}" if label else f"Team {parts[0]}"
+    if row["sport"] == "MLB" and source_key:
+        return f"{label} ({source_key})"
+    return label
+
+
+def strip_wiki_markup(value: str) -> str:
+    value = re.sub(r"<!--.*?-->", "", value)
+    value = re.sub(r"\[\[[^|\]]+\|([^\]]+)\]\]", r"\1", value)
+    value = re.sub(r"\[\[([^\]]+)\]\]", r"\1", value)
+    value = re.sub(r"\{\{[^{}]*\}\}", "", value)
+    value = re.sub(r"<[^>]+>", "", value)
+    return " ".join(value.replace("*", "").strip().split())
+
+
+def extract_nfl_years(value: str) -> str:
+    years = []
+    for match in re.finditer(r"\{\{\s*NFL Year\s*\|\s*(\d{4})(?:\s*\|\s*(\d{4}|present))?", value, flags=re.IGNORECASE):
+        start = match.group(1)
+        end = match.group(2)
+        if end and end != start:
+            years.append(f"{start}-{end}")
+        else:
+            years.append(start)
+    if years:
+        if len(years) == 2 and all("-" not in year for year in years) and re.search(r"[–—-]", value):
+            return f"{years[0]}-{years[1]}"
+        return ", ".join(years)
+    year_matches = re.findall(r"\b(?:19|20)\d{2}\b", value)
+    if len(year_matches) >= 2:
+        return f"{year_matches[0]}-{year_matches[-1]}"
+    if year_matches:
+        return year_matches[0]
+    return "Years NA"
+
+
+def parse_nfl_pastteams(content: str) -> list[dict[str, str]]:
+    match = re.search(r"^\|\s*pastteams\s*=(.*?)(?=^\|\s*\w+\s*=|\n\}\})", content, flags=re.MULTILINE | re.DOTALL)
+    if not match:
+        return []
+    teams = []
+    for line in match.group(1).splitlines():
+        if "*" not in line:
+            continue
+        team_part = line.split("(", 1)[0]
+        label = strip_wiki_markup(team_part)
+        if not label:
+            continue
+        teams.append({"label": label, "years": extract_nfl_years(line), "source": "Wikipedia infobox pastteams"})
+    return teams
+
+
+def load_nfl_pastteams_by_title() -> dict[str, list[dict[str, str]]]:
+    global NFL_PASTTEAMS_BY_TITLE
+    if NFL_PASTTEAMS_BY_TITLE is not None:
+        return NFL_PASTTEAMS_BY_TITLE
+
+    teams_by_title: dict[str, list[dict[str, str]]] = {}
+    if not NFL_WIKIPEDIA_PAGES.exists():
+        NFL_PASTTEAMS_BY_TITLE = teams_by_title
+        return teams_by_title
+
+    for path in sorted(NFL_WIKIPEDIA_PAGES.glob("nfl_honors_pages_chunk_*.json")):
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        pages = data.get("query", {}).get("pages", [])
+        if isinstance(pages, dict):
+            pages = pages.values()
+        for page in pages:
+            title = page.get("title")
+            revisions = page.get("revisions") or []
+            if not title or not revisions:
+                continue
+            content = revisions[0].get("slots", {}).get("main", {}).get("content", "")
+            teams = parse_nfl_pastteams(content)
+            if teams:
+                teams_by_title[title] = teams
+
+    NFL_PASTTEAMS_BY_TITLE = teams_by_title
+    return teams_by_title
+
+
+def nfl_pastteams_for_players(player_keys: list[tuple[str, str]]) -> dict[tuple[str, str], list[dict[str, str]]]:
+    nfl_ids = [player_id for sport, player_id in player_keys if sport == "NFL"]
+    if not nfl_ids or not HONORS_DB.exists():
+        return {}
+
+    by_title = load_nfl_pastteams_by_title()
+    if not by_title:
+        return {}
+
+    out: dict[tuple[str, str], list[dict[str, str]]] = {}
+    con = sqlite3.connect(HONORS_DB)
+    con.row_factory = sqlite3.Row
+    try:
+        for start in range(0, len(nfl_ids), 700):
+            chunk = nfl_ids[start : start + 700]
+            rows = con.execute(
+                f"""
+                select source_player_id, article_title
+                from nfl_wikipedia_title_map
+                where source_player_id in ({placeholders(chunk)})
+                  and article_title is not null
+                  and article_title != ''
+                """,
+                chunk,
+            ).fetchall()
+            for row in rows:
+                teams = by_title.get(row["article_title"])
+                if teams:
+                    out[("NFL", row["source_player_id"])] = teams
+    finally:
+        con.close()
+    return out
+
+
+def attach_player_timelines(player_rows: list[dict[str, Any]]) -> None:
+    if not player_rows:
+        return
+
+    player_keys = [(row["sport"], row["player_id"]) for row in player_rows]
+    nfl_pastteams = nfl_pastteams_for_players(player_keys)
+    timelines: dict[tuple[str, str], dict[str, list[dict[str, Any]]]] = {
+        key: {section: [] for section in TIMELINE_SECTION_ORDER} for key in player_keys
+    }
+    seen: dict[tuple[str, str], set[tuple[str, str, str, str]]] = {key: set() for key in player_keys}
+
+    con = connect()
+    try:
+        for start in range(0, len(player_keys), 350):
+            chunk = player_keys[start : start + 350]
+            key_filter = ", ".join("(?, ?)" for _ in chunk)
+            params = [value for key in chunk for value in key]
+            rows = con.execute(
+                f"""
+                select
+                    e.sport,
+                    e.player_id,
+                    e.event_type,
+                    e.start_year,
+                    e.end_year,
+                    e.duration_years,
+                    e.source,
+                    e.source_key,
+                    e.notes,
+                    l.label as location_label,
+                    l.location_kind,
+                    l.city,
+                    l.state,
+                    l.country
+                from player_location_events e
+                left join locations l using (location_id)
+                where (e.sport, e.player_id) in ({key_filter})
+                order by
+                    e.sport,
+                    e.player_id,
+                    case e.event_type
+                        when 'born' then 1
+                        when 'attended_high_school' then 2
+                        when 'attended_college' then 3
+                        when 'played_college' then 4
+                        when 'attended_school' then 5
+                        when 'played_pro' then 6
+                        else 7
+                    end,
+                    e.start_year is null,
+                    e.start_year,
+                    e.end_year,
+                    l.label
+                """,
+                params,
+            ).fetchall()
+            for row in rows:
+                key = (row["sport"], row["player_id"])
+                section = timeline_section_for_event(row["event_type"])
+                item = {
+                    "label": timeline_item_label(row),
+                    "years": year_span_label(row["start_year"], row["end_year"]),
+                    "event_label": EVENT_LABELS.get(EVENT_LAYER_BY_TYPE.get(row["event_type"], row["event_type"]), row["event_type"]),
+                    "source": row["source"],
+                    "notes": row["notes"],
+                }
+                dedupe = (section, item["label"], item["years"], item["source"])
+                if dedupe in seen[key]:
+                    continue
+                seen[key].add(dedupe)
+                timelines[key][section].append(item)
+    finally:
+        con.close()
+
+    for key, teams in nfl_pastteams.items():
+        if key not in timelines:
+            continue
+        for team in teams:
+            item = {
+                "label": team["label"],
+                "years": team["years"],
+                "event_label": "Pro Sports",
+                "source": team["source"],
+                "notes": "Cached from Wikipedia infobox pastteams; may include off-roster/practice-squad markers from the source article.",
+            }
+            dedupe = ("pro", item["label"], item["years"], item["source"])
+            if dedupe in seen[key]:
+                continue
+            seen[key].add(dedupe)
+            timelines[key]["pro"].append(item)
+
+    for row in player_rows:
+        key = (row["sport"], row["player_id"])
+        sections = []
+        for section in TIMELINE_SECTION_ORDER:
+            items = timelines[key][section]
+            if items:
+                items.sort(key=lambda item: (timeline_year_sort(item["years"]), item["label"]))
+                sections.append({"key": section, "label": TIMELINE_SECTION_LABELS[section], "items": items[:60]})
+        row["timeline"] = sections
+
+
 def render_text_page(title: str, text: str) -> bytes:
     escaped_title = html_lib.escape(title)
     escaped_text = html_lib.escape(text)
@@ -606,6 +880,9 @@ def build_response(query: dict[str, Any]) -> dict[str, Any]:
         features.append(dot)
     features.sort(key=lambda feature: (feature["properties"]["nearest_mi"], feature["properties"]["event_type"]))
 
+    returned_players = player_rows[:1000]
+    attach_player_timelines(returned_players)
+
     return {
         "query": query,
         "available_event_types": event_types,
@@ -621,7 +898,7 @@ def build_response(query: dict[str, Any]) -> dict[str, Any]:
                 "MLB All-Star and HOF fields come from Lahman; NFL and NBA HOF fields come from Wikidata; NFL Pro Bowl/All-Pro and NBA All-Star/All-NBA counts come from Wikipedia infobox career highlights.",
             ],
         },
-        "players": player_rows[:1000],
+        "players": returned_players,
         "locations_geojson": {"type": "FeatureCollection", "features": features},
     }
 
@@ -1074,6 +1351,13 @@ HTML = r"""
       grid-template-columns: 54px 1fr;
       gap: 9px;
       align-items: start;
+      cursor: pointer;
+    }
+    .player.expanded {
+      background: color-mix(in srgb, var(--field) 42%, transparent);
+      margin: 0 -8px;
+      padding: 12px 8px;
+      border-radius: 8px;
     }
     .avatar {
       width: 54px;
@@ -1132,6 +1416,42 @@ HTML = r"""
       font-size: 12px;
       color: var(--muted);
       line-height: 1.35;
+    }
+    .timeline {
+      display: none;
+      gap: 9px;
+      margin-top: 4px;
+      padding-top: 9px;
+      border-top: 1px solid var(--line);
+    }
+    .player.expanded .timeline {
+      display: grid;
+    }
+    .timeline-section {
+      display: grid;
+      gap: 4px;
+    }
+    .timeline-section strong {
+      font-size: 11px;
+      color: var(--ink);
+      text-transform: uppercase;
+      letter-spacing: .02em;
+    }
+    .timeline-list {
+      display: grid;
+      gap: 3px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+    .timeline-list li {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .timeline-years {
+      color: var(--ink);
+      font-weight: 700;
     }
     .photo-credit a {
       color: var(--muted);
@@ -1734,6 +2054,25 @@ HTML = r"""
       ].map(escapeHTML).join(' · ');
     }
 
+    function playerTimelineMarkup(player) {
+      const sections = player.timeline || [];
+      if (!sections.length) return '';
+      return `
+        <div class="timeline" aria-label="Player trajectory">
+          ${sections.map(section => `
+            <section class="timeline-section">
+              <strong>${escapeHTML(section.label)}</strong>
+              <ul class="timeline-list">
+                ${(section.items || []).map(item => `
+                  <li><span class="timeline-years">${escapeHTML(item.years)}</span> · ${escapeHTML(item.label)}</li>
+                `).join('')}
+              </ul>
+            </section>
+          `).join('')}
+        </div>
+      `;
+    }
+
     function renderPlayerList() {
       if (!latestData) return;
       const list = document.getElementById('list');
@@ -1764,6 +2103,9 @@ HTML = r"""
       players.forEach(player => {
         const item = document.createElement('article');
         item.className = 'player';
+        item.tabIndex = 0;
+        item.setAttribute('role', 'button');
+        item.setAttribute('aria-expanded', 'false');
         const media = playerMediaMarkup(player);
         item.innerHTML = `
           <div class="avatar">${media.image}</div>
@@ -1779,8 +2121,20 @@ HTML = r"""
             <div class="small">${playerProfileLine(player)}</div>
             <div class="small">${escapeHTML(player.matched_locations.slice(0, 4).join(' | '))}</div>
             ${media.credit}
+            ${playerTimelineMarkup(player)}
           </div>
         `;
+        item.addEventListener('click', event => {
+          if (event.target.closest('a, button')) return;
+          const expanded = item.classList.toggle('expanded');
+          item.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+        });
+        item.addEventListener('keydown', event => {
+          if (event.key !== 'Enter' && event.key !== ' ') return;
+          event.preventDefault();
+          const expanded = item.classList.toggle('expanded');
+          item.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+        });
         list.appendChild(item);
       });
     }

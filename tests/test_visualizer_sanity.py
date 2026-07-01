@@ -268,6 +268,19 @@ class OptionalDatabaseTests(unittest.TestCase):
         ]
         self.assertEqual(len(anthony_davis), 1)
         self.assertEqual(anthony_davis[0]["pro_career_length"], 9)
+        timeline = {section["key"]: section["items"] for section in anthony_davis[0]["timeline"]}
+        self.assertIn("birthplace", timeline)
+        self.assertIn("high_school", timeline)
+        self.assertIn("college", timeline)
+        self.assertIn("pro", timeline)
+        pro_labels = {item["label"] for item in timeline["pro"]}
+        self.assertIn("Houston Oilers", pro_labels)
+        self.assertIn("Seattle Seahawks", pro_labels)
+        self.assertIn("Kansas City Chiefs", pro_labels)
+        self.assertIn("GB / Lambeau Field", pro_labels)
+        self.assertIn("BAL / PSINet Stadium", pro_labels)
+        chiefs = [item for item in timeline["pro"] if item["label"] == "Kansas City Chiefs"]
+        self.assertEqual(chiefs[0]["years"], "1994-1998")
 
 
 if __name__ == "__main__":
