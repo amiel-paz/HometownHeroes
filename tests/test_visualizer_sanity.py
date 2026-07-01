@@ -170,6 +170,8 @@ class BirthplaceAuditTests(unittest.TestCase):
             "scratch/birthplace_coverage_audit.sqlite",
             "scratch/birthplace_conflict_review_candidates.json",
             "pipelines/apply_birthplace_audit_fixes.py",
+            "pipelines/audit_pro_year_coverage.py",
+            "scratch/pro_year_coverage_audit.sqlite",
             "data/curation/birthplace_overrides.json",
             "data/derived/birthplace_audit_fixes.sqlite.gz",
             "--include-complete-birthplaces",
@@ -342,10 +344,10 @@ class OptionalDatabaseTests(unittest.TestCase):
         self.assertIn("Houston Oilers", pro_labels)
         self.assertIn("Seattle Seahawks", pro_labels)
         self.assertIn("Kansas City Chiefs", pro_labels)
-        self.assertIn("Green Bay Packers", pro_labels)
-        self.assertIn("Baltimore Ravens", pro_labels)
-        self.assertNotIn("GB / Lambeau Field", pro_labels)
-        self.assertNotIn("BAL / PSINet Stadium", pro_labels)
+        self.assertIn("Green Bay Packers / Lambeau Field", pro_labels)
+        self.assertIn("Baltimore Ravens / PSINet Stadium", pro_labels)
+        self.assertNotIn("Green Bay Packers", pro_labels)
+        self.assertNotIn("Baltimore Ravens", pro_labels)
         chiefs = [item for item in timeline["pro"] if item["label"] == "Kansas City Chiefs"]
         self.assertEqual(chiefs[0]["years"], "1994-1998")
 
@@ -374,7 +376,7 @@ class OptionalDatabaseTests(unittest.TestCase):
         pro_labels = [item["label"] for item in timeline["pro"]]
         self.assertEqual(college_labels.count("New Mexico State University"), 1)
         self.assertNotIn("New Mexico State University-Main Campus", college_labels)
-        self.assertIn("Miami Dolphins", pro_labels)
+        self.assertIn("Miami Dolphins / Dolphin Stadium", pro_labels)
         self.assertNotIn("MIA / Dolphin Stadium", pro_labels)
 
     @unittest.skipUnless(viz.DB_PATH.exists(), "local scratch database is not present")
@@ -430,7 +432,7 @@ class OptionalDatabaseTests(unittest.TestCase):
         birthplace_labels = [item["label"] for item in timeline["birthplace"]]
         self.assertEqual(birthplace_labels, ["Sombor, Sombor City"])
         jokic_pro_labels = [item["label"] for item in timeline["pro"]]
-        self.assertIn("Denver Nuggets", jokic_pro_labels)
+        self.assertIn("Denver Nuggets / Ball Arena", jokic_pro_labels)
         self.assertNotIn("NBA team 7 / Ball Arena", jokic_pro_labels)
 
     @unittest.skipUnless(viz.DB_PATH.exists(), "local scratch database is not present")
@@ -456,6 +458,28 @@ class OptionalDatabaseTests(unittest.TestCase):
         pro_labels = [item["label"] for item in timeline["pro"]]
         self.assertIn("Oklahoma City Thunder / Paycom Center", pro_labels)
         self.assertNotIn("NBA team 25 / Paycom Center", pro_labels)
+
+    @unittest.skipUnless(viz.DB_PATH.exists(), "local scratch database is not present")
+    def test_mlb_timeline_uses_team_ids_for_pro_park_events(self) -> None:
+        rows = [{"sport": "MLB", "player_id": "oelkebr01", "display_name": "Bryan Oelkers"}]
+        viz.attach_player_timelines(rows)
+        timeline = {section["key"]: section["items"] for section in rows[0]["timeline"]}
+        pro_labels = [item["label"] for item in timeline["pro"]]
+        self.assertIn("Minnesota Twins / Hubert H. Humphrey Metrodome", pro_labels)
+        self.assertIn("Cleveland Indians / Cleveland Stadium", pro_labels)
+        self.assertNotIn("Hubert H. Humphrey Metrodome (MIN03)", pro_labels)
+
+    @unittest.skipUnless(viz.DB_PATH.exists(), "local scratch database is not present")
+    def test_nba_timeline_prefers_team_venue_rows_over_duplicate_team_only_rows(self) -> None:
+        rows = [{"sport": "NBA", "player_id": "690", "display_name": "Zeljko Rebraca"}]
+        viz.attach_player_timelines(rows)
+        timeline = {section["key"]: section["items"] for section in rows[0]["timeline"]}
+        pro_labels = [item["label"] for item in timeline["pro"]]
+        self.assertIn("Detroit Pistons / The Palace of Auburn Hills", pro_labels)
+        self.assertIn("LA Clippers / crypto.com Arena", pro_labels)
+        self.assertIn("Atlanta Hawks", pro_labels)
+        self.assertNotIn("Detroit Pistons", pro_labels)
+        self.assertNotIn("Los Angeles Clippers", pro_labels)
 
     @unittest.skipUnless(viz.DB_PATH.exists(), "local scratch database is not present")
     def test_struer_denmark_birthplace_query_finds_morten_andersen(self) -> None:

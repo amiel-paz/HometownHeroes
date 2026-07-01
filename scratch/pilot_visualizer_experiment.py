@@ -531,21 +531,22 @@ def timeline_item_label(row: sqlite3.Row) -> str:
 
     source_key = row["source_key"] or ""
     parts = source_key.split("|")
-    if row["sport"] == "NFL" and parts and parts[0]:
-        return f"{parts[0]} / {label}" if label else parts[0]
     if row["sport"] == "NBA" and row["source"].startswith("Wikidata P54"):
         return label
-    if row["sport"] == "NBA" and parts and parts[0]:
-        team_name = parts[0] if not parts[0].isdigit() else f"NBA team {parts[0]}"
+    if parts and parts[0]:
+        team_name = parts[0].strip()
+        if row["sport"] == "NFL":
+            team_name = NFL_TEAM_NAMES_BY_ABBR.get(team_name, team_name)
+        elif row["sport"] == "NBA" and team_name.isdigit():
+            team_name = f"NBA team {team_name}"
         return f"{team_name} / {label}" if label else team_name
-    if row["sport"] == "MLB" and source_key:
-        return f"{label} ({source_key})"
     return label
 
 
 def normalize_timeline_label(label: str) -> str:
     normalized = label.lower()
     normalized = normalized.replace("&", " and ")
+    normalized = re.sub(r"\bla\b", "los angeles", normalized)
     normalized = re.sub(r"[-_/]+", " ", normalized)
     normalized = re.sub(r"\bmain campus\b", "", normalized)
     normalized = re.sub(r"\bcampus\b", "", normalized)
@@ -602,12 +603,11 @@ def timeline_item_rank(item: dict[str, Any]) -> tuple[int, int]:
     return (penalty, len(label))
 
 
-def nfl_abbr_for_timeline_item(item: dict[str, Any]) -> str | None:
+def team_prefix_for_timeline_item(item: dict[str, Any]) -> str | None:
     label = item["label"]
     if " / " not in label:
         return None
-    prefix = label.split(" / ", 1)[0].strip()
-    return prefix if prefix in NFL_TEAM_NAMES_BY_ABBR else None
+    return label.split(" / ", 1)[0].strip()
 
 
 def sanitize_timeline_items(section: str, items: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -615,42 +615,22 @@ def sanitize_timeline_items(section: str, items: list[dict[str, Any]]) -> list[d
         items = [item for item in items if item["label"] != "Location NA"]
 
     if section == "pro":
-        team_items = [
-            item
-            for item in items
-            if (
-                item.get("source") == "Wikipedia infobox pastteams"
-                or (item.get("source") or "").startswith("Wikidata P54")
-            )
-            and timeline_years(item["years"])
-            and " / " not in item["label"]
-        ]
+        venue_items = [item for item in items if team_prefix_for_timeline_item(item)]
         cleaned = []
         for item in items:
-            abbr = nfl_abbr_for_timeline_item(item)
+            team_prefix = team_prefix_for_timeline_item(item)
             years = timeline_years(item["years"])
-            if abbr and years:
-                expected_team = NFL_TEAM_NAMES_BY_ABBR[abbr]
-                expected_key = normalize_timeline_label(expected_team)
-                has_team_duplicate = any(
-                    normalize_timeline_label(team["label"]) == expected_key
-                    and bool(years & timeline_years(team["years"]))
-                    for team in team_items
+            if not team_prefix:
+                team_key = normalize_timeline_label(item["label"])
+                has_venue_duplicate = any(
+                    normalize_timeline_label(team_prefix_for_timeline_item(venue)) == team_key
+                    and (not years or not timeline_years(venue["years"]) or timeline_ranges_overlap_or_continue(venue, item))
+                    for venue in venue_items
                 )
-                if has_team_duplicate:
-                    continue
-            if item.get("source", "").startswith("hoopR NBA") and " / " in item["label"]:
-                team_name = item["label"].split(" / ", 1)[0].strip()
-                team_key = normalize_timeline_label(team_name)
-                has_team_duplicate = any(
-                    normalize_timeline_label(team["label"]) == team_key
-                    and timeline_ranges_overlap_or_continue(team, item)
-                    for team in team_items
-                )
-                if has_team_duplicate:
+                if has_venue_duplicate:
                     continue
             cleaned.append(item)
-        return cleaned
+        items = cleaned
 
     best_by_label_and_years: dict[tuple[str, str], dict[str, Any]] = {}
     for item in items:

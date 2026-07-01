@@ -809,7 +809,7 @@ def load_events(con: sqlite3.Connection) -> None:
         insert or replace into player_location_events
         (event_id, sport, player_id, event_type, location_id, start_year, end_year, duration_years, source, source_key, confidence, notes)
         select
-            stable_id('MLB', playerID, 'played_pro', park_key),
+            stable_id('MLB', playerID, 'played_pro', teamID, park_key),
             'MLB',
             playerID,
             'played_pro',
@@ -818,7 +818,7 @@ def load_events(con: sqlite3.Connection) -> None:
             cast(end_year as integer),
             cast(seasons as integer),
             'Lahman Appearances + HomeGames + Parks',
-            park_key,
+            coalesce(nullif(team_name, ''), teamID) || '|' || park_key,
             'source_reported',
             'Park coordinates currently use city centroids unless exact venue coordinates were present upstream.'
         from mlb.mlb_pro_park_events;

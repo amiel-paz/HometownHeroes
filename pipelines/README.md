@@ -167,6 +167,19 @@ For hosted builds, promote the safe fixer cache as
 `data/derived/birthplace_audit_fixes.sqlite.gz`; Render hydrates that artifact
 before `build_database.py` so deploys do not repeat the long audit run.
 
+## Pro Year Coverage Audit
+
+To audit professional team/location rows that have no start or end year:
+
+```bash
+python3 pipelines/audit_pro_year_coverage.py
+```
+
+The audit writes `scratch/pro_year_coverage_audit.sqlite` and
+`scratch/pro_year_coverage_audit_summary.json`. It classifies missing-year rows
+as duplicate team rows with known years elsewhere, player-career-known but
+team-years-missing rows, or rows where both player and team years are missing.
+
 ## Year Semantics
 
 - `played_pro` rows may carry `start_year`, `end_year`, and `duration_years` only when a source provides season-level professional participation. The unified database exposes those rows through `pro_career_summary`.
