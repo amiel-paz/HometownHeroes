@@ -140,7 +140,7 @@ def sparql_request(query: str) -> dict:
                 delay = 10.0 * attempt
             log(f"HTTP {exc.code}; backing off {delay:.1f}s")
             time.sleep(delay)
-        except URLError as exc:
+        except (TimeoutError, URLError) as exc:
             last_exc = exc
             if attempt == 4:
                 raise
