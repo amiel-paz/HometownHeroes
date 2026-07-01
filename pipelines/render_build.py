@@ -23,6 +23,8 @@ APP_DB = SCRATCH / "HometownHeroes.sqlite"
 DERIVED = ROOT / "data" / "derived"
 PLAYER_MEDIA_DB = SCRATCH / "player_media.sqlite"
 PLAYER_MEDIA_ARTIFACT = DERIVED / "player_media.sqlite.gz"
+BIRTH_AUDIT_FIXES_DB = SCRATCH / "birthplace_audit_fixes.sqlite"
+BIRTH_AUDIT_FIXES_ARTIFACT = DERIVED / "birthplace_audit_fixes.sqlite.gz"
 
 
 def env_flag(name: str, default: bool = False) -> bool:
@@ -63,6 +65,22 @@ def hydrate_player_media_from_artifact() -> None:
     with gzip.open(PLAYER_MEDIA_ARTIFACT, "rb") as source, tmp.open("wb") as target:
         shutil.copyfileobj(source, target)
     tmp.replace(PLAYER_MEDIA_DB)
+
+
+def hydrate_birthplace_audit_fixes_from_artifact() -> None:
+    if BIRTH_AUDIT_FIXES_DB.exists():
+        print(f"using existing birthplace audit fixes cache: {BIRTH_AUDIT_FIXES_DB}", flush=True)
+        return
+    if not BIRTH_AUDIT_FIXES_ARTIFACT.exists():
+        print(f"birthplace audit fixes artifact not found; no audit fixes will be applied: {BIRTH_AUDIT_FIXES_ARTIFACT}", flush=True)
+        return
+
+    BIRTH_AUDIT_FIXES_DB.parent.mkdir(parents=True, exist_ok=True)
+    tmp = BIRTH_AUDIT_FIXES_DB.with_suffix(BIRTH_AUDIT_FIXES_DB.suffix + ".tmp")
+    print(f"hydrating birthplace audit fixes from {BIRTH_AUDIT_FIXES_ARTIFACT}", flush=True)
+    with gzip.open(BIRTH_AUDIT_FIXES_ARTIFACT, "rb") as source, tmp.open("wb") as target:
+        shutil.copyfileobj(source, target)
+    tmp.replace(BIRTH_AUDIT_FIXES_DB)
 
 
 def main() -> int:
@@ -175,6 +193,7 @@ def main() -> int:
     else:
         hydrate_player_media_from_artifact()
 
+    hydrate_birthplace_audit_fixes_from_artifact()
     commands.append([PYTHON, "pipelines/build_database.py"])
 
     for command in commands:

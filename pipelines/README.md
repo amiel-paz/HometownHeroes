@@ -163,6 +163,10 @@ Tracked curated overrides live in `data/curation/birthplace_overrides.json`.
 They are intentionally small and source-explained; use them for cases where a
 structured source is demonstrably wrong or ambiguous.
 
+For hosted builds, promote the safe fixer cache as
+`data/derived/birthplace_audit_fixes.sqlite.gz`; Render hydrates that artifact
+before `build_database.py` so deploys do not repeat the long audit run.
+
 ## Year Semantics
 
 - `played_pro` rows may carry `start_year`, `end_year`, and `duration_years` only when a source provides season-level professional participation. The unified database exposes those rows through `pro_career_summary`.

@@ -120,6 +120,8 @@ class RenderDeployTests(unittest.TestCase):
         self.assertIn("HH_RENDER_INCLUDE_MEDIA", build_script)
         self.assertIn("data\" / \"derived", build_script)
         self.assertIn("player_media.sqlite.gz", build_script)
+        self.assertIn("birthplace_audit_fixes.sqlite.gz", build_script)
+        self.assertIn("hydrate_birthplace_audit_fixes_from_artifact()", build_script)
 
     def test_repo_path_handles_hosted_database_paths(self) -> None:
         outside = Path("/tmp/HometownHeroes.sqlite")
@@ -143,6 +145,22 @@ class RenderDeployTests(unittest.TestCase):
                 con.close()
         self.assertGreater(usable, 1000)
 
+    def test_derived_birthplace_audit_fixes_artifact_is_readable(self) -> None:
+        artifact = ROOT / "data" / "derived" / "birthplace_audit_fixes.sqlite.gz"
+        self.assertTrue(artifact.exists())
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = Path(tmpdir) / "birthplace_audit_fixes.sqlite"
+            with gzip.open(artifact, "rb") as source, db_path.open("wb") as target:
+                shutil.copyfileobj(source, target)
+            con = sqlite3.connect(db_path)
+            try:
+                birthdate_overrides = con.execute("select count(*) from player_birthdate_overrides").fetchone()[0]
+                birthplace_overrides = con.execute("select count(*) from birthplace_overrides").fetchone()[0]
+            finally:
+                con.close()
+        self.assertGreater(birthdate_overrides, 20000)
+        self.assertGreaterEqual(birthplace_overrides, 0)
+
 
 class BirthplaceAuditTests(unittest.TestCase):
     def test_birthplace_audit_and_fixer_scripts_are_documented(self) -> None:
@@ -153,6 +171,7 @@ class BirthplaceAuditTests(unittest.TestCase):
             "scratch/birthplace_conflict_review_candidates.json",
             "pipelines/apply_birthplace_audit_fixes.py",
             "data/curation/birthplace_overrides.json",
+            "data/derived/birthplace_audit_fixes.sqlite.gz",
             "--include-complete-birthplaces",
         ):
             self.assertIn(snippet, readme)
