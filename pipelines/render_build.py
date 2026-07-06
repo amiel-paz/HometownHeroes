@@ -96,6 +96,7 @@ def main() -> int:
         [PYTHON, "pipelines/ingest_nfl.py"],
         [PYTHON, "pipelines/ingest_nba.py"],
         [PYTHON, "pipelines/ingest_nfl_stadiums.py", "--sleep-seconds", sleep_seconds],
+        [PYTHON, "pipelines/build_pro_venue_stints.py"],
         [
             PYTHON,
             "pipelines/enrich_wikidata_education.py",

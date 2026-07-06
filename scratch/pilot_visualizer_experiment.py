@@ -28,6 +28,7 @@ DB_PATH = Path(os.environ.get("HH_DB_PATH", ROOT / "scratch" / "HometownHeroes.s
 GEOCODE_CACHE = ROOT / "scratch" / "place_geocode_cache.sqlite"
 ATTRIBUTIONS_PATH = ROOT / "ATTRIBUTIONS.md"
 HONORS_DB = ROOT / "scratch" / "player_honors.sqlite"
+PRO_VENUE_STINTS_DB = ROOT / "scratch" / "pro_venue_stints.sqlite"
 NFL_WIKIPEDIA_PAGES = ROOT / "data" / "raw" / "wikipedia" / "nfl_honors"
 
 EVENT_TYPE_GROUPS = {
@@ -63,13 +64,13 @@ TIMELINE_SECTION_LABELS = {
     "birthplace": "Birthplace",
     "high_school": "High School",
     "college": "College",
-    "school": "School",
     "pro": "Pro Teams / Venues",
 }
 
-TIMELINE_SECTION_ORDER = ["birthplace", "high_school", "college", "school", "pro"]
+TIMELINE_SECTION_ORDER = ["birthplace", "high_school", "college", "pro"]
 
 NFL_PASTTEAMS_BY_TITLE: dict[str, list[dict[str, str]]] | None = None
+PRO_VENUE_STINTS_BY_SPORT: dict[str, list[dict[str, Any]]] | None = None
 
 NFL_TEAM_NAMES_BY_ABBR = {
     "ARI": "Arizona Cardinals",
@@ -109,6 +110,27 @@ NFL_TEAM_NAMES_BY_ABBR = {
     "TEN": "Tennessee Titans",
     "WAS": "Washington Commanders",
 }
+
+
+def nfl_team_name_for_season(team: str | None, season: Any = None) -> str:
+    team = str(team or "")
+    try:
+        year = int(season)
+    except (TypeError, ValueError):
+        year = None
+    if team == "LV" and year is not None and year <= 2019:
+        return "Oakland Raiders"
+    if team == "LAR" and year is not None and 1995 <= year <= 2015:
+        return "St. Louis Rams"
+    if team == "LAC" and year is not None and year <= 2016:
+        return "San Diego Chargers"
+    if team == "WAS" and year is not None:
+        if year <= 2019:
+            return "Washington Redskins"
+        if year <= 2021:
+            return "Washington Football Team"
+    return NFL_TEAM_NAMES_BY_ABBR.get(team, team)
+
 
 DEFAULT_QUERY = {
     "place": "San Jose, CA",
@@ -497,7 +519,7 @@ def career_length_from_years(start_year: Any, end_year: Any, fallback: Any = Non
     return end - start + 1
 
 
-def timeline_section_for_event(event_type: str) -> str:
+def timeline_section_for_event(event_type: str) -> str | None:
     if event_type == "born":
         return "birthplace"
     if event_type == "attended_high_school":
@@ -506,7 +528,7 @@ def timeline_section_for_event(event_type: str) -> str:
         return "college"
     if event_type == "played_pro":
         return "pro"
-    return "school"
+    return None
 
 
 def year_span_label(start_year: Any, end_year: Any) -> str:
@@ -536,7 +558,7 @@ def timeline_item_label(row: sqlite3.Row) -> str:
     if parts and parts[0]:
         team_name = parts[0].strip()
         if row["sport"] == "NFL":
-            team_name = NFL_TEAM_NAMES_BY_ABBR.get(team_name, team_name)
+            team_name = nfl_team_name_for_season(team_name, row["start_year"])
         elif row["sport"] == "NBA" and team_name.isdigit():
             team_name = f"NBA team {team_name}"
         return f"{team_name} / {label}" if label else team_name
@@ -566,6 +588,61 @@ def timeline_years(value: str) -> set[int]:
         if start <= end and end - start <= 100:
             return set(range(start, end + 1))
     return set(years)
+
+
+def load_pro_venue_stints() -> dict[str, list[dict[str, Any]]]:
+    global PRO_VENUE_STINTS_BY_SPORT
+    if PRO_VENUE_STINTS_BY_SPORT is not None:
+        return PRO_VENUE_STINTS_BY_SPORT
+
+    by_sport: dict[str, list[dict[str, Any]]] = {}
+    if not PRO_VENUE_STINTS_DB.exists():
+        PRO_VENUE_STINTS_BY_SPORT = by_sport
+        return by_sport
+
+    con = sqlite3.connect(PRO_VENUE_STINTS_DB)
+    con.row_factory = sqlite3.Row
+    try:
+        rows = con.execute(
+            """
+            select sport, team_name, venue_name, start_year, end_year
+            from pro_venue_stints
+            where team_name is not null and team_name != ''
+              and venue_name is not null and venue_name != ''
+            order by sport, team_name, start_year, end_year
+            """
+        ).fetchall()
+    finally:
+        con.close()
+
+    for row in rows:
+        by_sport.setdefault(row["sport"], []).append(
+            {
+                "team_key": normalize_timeline_label(row["team_name"]),
+                "venue_name": row["venue_name"],
+                "start_year": row["start_year"],
+                "end_year": row["end_year"],
+            }
+        )
+    PRO_VENUE_STINTS_BY_SPORT = by_sport
+    return by_sport
+
+
+def canonical_venue_for_team_years(sport: str, team_label: str, years_label: str) -> str | None:
+    years = timeline_years(years_label)
+    if not years:
+        return None
+
+    team_key = normalize_timeline_label(team_label)
+    venues = {
+        stint["venue_name"]
+        for stint in load_pro_venue_stints().get(sport, [])
+        if stint["team_key"] == team_key
+        and any(int(stint["start_year"]) <= year <= int(stint["end_year"]) for year in years)
+    }
+    if len(venues) == 1:
+        return next(iter(venues))
+    return None
 
 
 def timeline_year_bounds(item: dict[str, Any]) -> tuple[int | None, int | None]:
@@ -647,7 +724,16 @@ def strip_wiki_markup(value: str) -> str:
     value = re.sub(r"\[\[([^\]]+)\]\]", r"\1", value)
     value = re.sub(r"\{\{[^{}]*\}\}", "", value)
     value = re.sub(r"<[^>]+>", "", value)
+    value = value.replace("[[", "").replace("]]", "")
     return " ".join(value.replace("*", "").strip().split())
+
+
+def nfl_pastteam_label_from_line(line: str) -> str:
+    label = strip_wiki_markup(line)
+    label = re.sub(r"\s*\([^()]*(?:19|20)\d{2}[^()]*\)\s*$", "", label)
+    label = re.sub(r"\s*\([–—\-\s]*\)\s*$", "", label)
+    label = re.sub(r"\s*\((?:present|current|active)\)\s*$", "", label, flags=re.IGNORECASE)
+    return label.strip()
 
 
 def extract_nfl_years(value: str) -> str:
@@ -679,8 +765,7 @@ def parse_nfl_pastteams(content: str) -> list[dict[str, str]]:
     for line in match.group(1).splitlines():
         if "*" not in line:
             continue
-        team_part = line.split("(", 1)[0]
-        label = strip_wiki_markup(team_part)
+        label = nfl_pastteam_label_from_line(line)
         if not label:
             continue
         teams.append({"label": label, "years": extract_nfl_years(line), "source": "Wikipedia infobox pastteams"})
@@ -808,10 +893,12 @@ def attach_player_timelines(player_rows: list[dict[str, Any]]) -> None:
                     l.label
                 """,
                 params,
-            ).fetchall()
+                ).fetchall()
             for row in rows:
                 key = (row["sport"], row["player_id"])
                 section = timeline_section_for_event(row["event_type"])
+                if section is None:
+                    continue
                 item = {
                     "label": timeline_item_label(row),
                     "years": year_span_label(row["start_year"], row["end_year"]),
@@ -819,6 +906,10 @@ def attach_player_timelines(player_rows: list[dict[str, Any]]) -> None:
                     "source": row["source"],
                     "notes": row["notes"],
                 }
+                if section == "pro" and " / " not in item["label"]:
+                    venue = canonical_venue_for_team_years(row["sport"], item["label"], item["years"])
+                    if venue:
+                        item["label"] = f"{item['label']} / {venue}"
                 dedupe = (section, item["label"], item["years"], item["source"])
                 if dedupe in seen[key]:
                     continue
@@ -838,6 +929,9 @@ def attach_player_timelines(player_rows: list[dict[str, Any]]) -> None:
                 "source": team["source"],
                 "notes": "Cached from Wikipedia infobox pastteams; may include off-roster/practice-squad markers from the source article.",
             }
+            venue = canonical_venue_for_team_years(key[0], item["label"], item["years"])
+            if venue:
+                item["label"] = f"{item['label']} / {venue}"
             dedupe = ("pro", item["label"], item["years"], item["source"])
             if dedupe in seen[key]:
                 continue

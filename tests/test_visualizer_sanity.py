@@ -46,6 +46,8 @@ class VisualizerTaxonomyTests(unittest.TestCase):
         self.assertEqual(viz.EVENT_LABELS["college"], "College")
         self.assertNotIn("School", set(viz.EVENT_LABELS.values()))
         self.assertNotIn("College Sports", set(viz.EVENT_LABELS.values()))
+        self.assertNotIn("school", viz.TIMELINE_SECTION_ORDER)
+        self.assertIsNone(viz.timeline_section_for_event("attended_school"))
 
     def test_or_groups_and_and_clauses_normalize(self) -> None:
         query = viz.normalize_query(
@@ -79,6 +81,11 @@ class VisualizerTaxonomyTests(unittest.TestCase):
     def test_nfl_pfr_variants_include_uppercase_directory_prefix(self) -> None:
         self.assertEqual(birthplace_pipeline.pfr_variants("andermor01"), ["A/andermor01", "a/andermor01"])
         self.assertEqual(birthplace_pipeline.pfr_variants("a/andermor01"), ["A/andermor01", "a/andermor01"])
+
+    def test_nfl_pastteam_parser_strips_wikilink_parentheses_before_years(self) -> None:
+        line = "* [[Las Vegas Outlaws (XFL)|Las Vegas Outlaws]] (2001)"
+        self.assertEqual(viz.nfl_pastteam_label_from_line(line), "Las Vegas Outlaws")
+        self.assertEqual(viz.extract_nfl_years(line), "2001")
 
 
 class AttributionTests(unittest.TestCase):
@@ -118,6 +125,7 @@ class RenderDeployTests(unittest.TestCase):
         build_script = (ROOT / "pipelines" / "render_build.py").read_text(encoding="utf-8")
         self.assertIn("pipelines/enrich_nba_alltime_wikidata.py", build_script)
         self.assertIn("HH_RENDER_INCLUDE_MEDIA", build_script)
+        self.assertIn("pipelines/build_pro_venue_stints.py", build_script)
         self.assertIn("data\" / \"derived", build_script)
         self.assertIn("player_media.sqlite.gz", build_script)
         self.assertIn("birthplace_audit_fixes.sqlite.gz", build_script)
@@ -171,7 +179,10 @@ class BirthplaceAuditTests(unittest.TestCase):
             "scratch/birthplace_conflict_review_candidates.json",
             "pipelines/apply_birthplace_audit_fixes.py",
             "pipelines/audit_pro_year_coverage.py",
+            "pipelines/build_pro_venue_stints.py",
             "scratch/pro_year_coverage_audit.sqlite",
+            "scratch/pro_venue_stints.sqlite",
+            "data/curation/pro_venue_stints.json",
             "data/curation/birthplace_overrides.json",
             "data/derived/birthplace_audit_fixes.sqlite.gz",
             "--include-complete-birthplaces",
@@ -341,14 +352,17 @@ class OptionalDatabaseTests(unittest.TestCase):
         self.assertIn("college", timeline)
         self.assertIn("pro", timeline)
         pro_labels = {item["label"] for item in timeline["pro"]}
-        self.assertIn("Houston Oilers", pro_labels)
-        self.assertIn("Seattle Seahawks", pro_labels)
-        self.assertIn("Kansas City Chiefs", pro_labels)
+        self.assertIn("Houston Oilers / Astrodome", pro_labels)
+        self.assertIn("Seattle Seahawks / Kingdome", pro_labels)
+        self.assertIn("Kansas City Chiefs / Arrowhead Stadium", pro_labels)
         self.assertIn("Green Bay Packers / Lambeau Field", pro_labels)
         self.assertIn("Baltimore Ravens / PSINet Stadium", pro_labels)
+        self.assertNotIn("Houston Oilers", pro_labels)
+        self.assertNotIn("Seattle Seahawks", pro_labels)
+        self.assertNotIn("Kansas City Chiefs", pro_labels)
         self.assertNotIn("Green Bay Packers", pro_labels)
         self.assertNotIn("Baltimore Ravens", pro_labels)
-        chiefs = [item for item in timeline["pro"] if item["label"] == "Kansas City Chiefs"]
+        chiefs = [item for item in timeline["pro"] if item["label"] == "Kansas City Chiefs / Arrowhead Stadium"]
         self.assertEqual(chiefs[0]["years"], "1994-1998")
 
     def test_expanded_timeline_collapses_common_alias_duplicates(self):
@@ -480,6 +494,102 @@ class OptionalDatabaseTests(unittest.TestCase):
         self.assertIn("Atlanta Hawks", pro_labels)
         self.assertNotIn("Detroit Pistons", pro_labels)
         self.assertNotIn("Los Angeles Clippers", pro_labels)
+
+    @unittest.skipUnless((ROOT / "scratch" / "pro_venue_stints.sqlite").exists(), "local pro venue cache is not present")
+    def test_canonical_pro_venue_stints_cover_cached_source_ranges(self) -> None:
+        con = sqlite3.connect(ROOT / "scratch" / "pro_venue_stints.sqlite")
+        con.row_factory = sqlite3.Row
+        try:
+            rows = con.execute(
+                """
+                select sport, team_name, venue_name, start_year, end_year
+                from pro_venue_stints
+                where (sport = 'MLB' and team_name = 'Minnesota Twins' and venue_name = 'Hubert H. Humphrey Metrodome')
+                   or (sport = 'NBA' and team_name = 'Denver Nuggets' and venue_name = 'Ball Arena')
+                   or (sport = 'NFL' and team_name = 'San Francisco 49ers' and venue_name = '3Com Park')
+                   or (sport = 'NFL' and team_name = 'San Francisco 49ers' and venue_name = 'Candlestick Park')
+                   or (sport = 'NFL' and team_name = 'Las Vegas Outlaws' and venue_name = 'Sam Boyd Stadium')
+                """
+            ).fetchall()
+        finally:
+            con.close()
+
+        observed: dict[tuple[str, str, str], list[sqlite3.Row]] = {}
+        for row in rows:
+            observed.setdefault((row["sport"], row["team_name"], row["venue_name"]), []).append(row)
+        twins = observed[("MLB", "Minnesota Twins", "Hubert H. Humphrey Metrodome")]
+        nuggets = observed[("NBA", "Denver Nuggets", "Ball Arena")]
+        niners = observed[("NFL", "San Francisco 49ers", "3Com Park")]
+        candlestick = observed[("NFL", "San Francisco 49ers", "Candlestick Park")]
+        outlaws = observed[("NFL", "Las Vegas Outlaws", "Sam Boyd Stadium")]
+        self.assertTrue(any((row["start_year"], row["end_year"]) == (1982, 2009) for row in twins))
+        self.assertTrue(any(row["start_year"] <= 2002 and row["end_year"] >= 2026 for row in nuggets))
+        self.assertTrue(any((row["start_year"], row["end_year"]) == (1999, 2004) for row in niners))
+        self.assertTrue(any((row["start_year"], row["end_year"]) == (1971, 1998) for row in candlestick))
+        self.assertTrue(any((row["start_year"], row["end_year"]) == (2001, 2001) for row in outlaws))
+
+    @unittest.skipUnless((ROOT / "scratch" / "pro_venue_stints.sqlite").exists(), "local pro venue cache is not present")
+    def test_canonical_pro_venue_lookup_augments_team_only_items_when_unambiguous(self) -> None:
+        self.assertEqual(
+            viz.canonical_venue_for_team_years("NFL", "San Francisco 49ers", "1999"),
+            "3Com Park",
+        )
+        self.assertEqual(
+            viz.canonical_venue_for_team_years("NFL", "San Francisco 49ers", "1993"),
+            "Candlestick Park",
+        )
+        self.assertEqual(
+            viz.canonical_venue_for_team_years("NFL", "Las Vegas Outlaws", "2001"),
+            "Sam Boyd Stadium",
+        )
+        self.assertEqual(
+            viz.canonical_venue_for_team_years("NFL", "Houston Oilers", "1988"),
+            "Astrodome",
+        )
+        self.assertEqual(
+            viz.canonical_venue_for_team_years("NFL", "Seattle Seahawks", "1989"),
+            "Kingdome",
+        )
+        self.assertEqual(
+            viz.canonical_venue_for_team_years("NFL", "Kansas City Chiefs", "1994-1998"),
+            "Arrowhead Stadium",
+        )
+        self.assertEqual(
+            viz.canonical_venue_for_team_years("NFL", "Oakland Raiders", "2007"),
+            "McAfee Coliseum",
+        )
+        self.assertEqual(viz.nfl_team_name_for_season("LV", 2007), "Oakland Raiders")
+        self.assertEqual(viz.nfl_team_name_for_season("LV", 2020), "Las Vegas Raiders")
+        self.assertEqual(viz.nfl_team_name_for_season("LAR", 2007), "St. Louis Rams")
+        self.assertEqual(viz.nfl_team_name_for_season("LAC", 2007), "San Diego Chargers")
+        self.assertEqual(viz.nfl_team_name_for_season("WAS", 2019), "Washington Redskins")
+        self.assertEqual(viz.nfl_team_name_for_season("WAS", 2020), "Washington Football Team")
+        self.assertEqual(
+            viz.canonical_venue_for_team_years("NBA", "Denver Nuggets", "2016-2026"),
+            "Ball Arena",
+        )
+        self.assertIsNone(viz.canonical_venue_for_team_years("NFL", "San Francisco 49ers", "Years NA"))
+
+    @unittest.skipUnless(viz.DB_PATH.exists(), "local scratch database is not present")
+    def test_eric_frampton_timeline_uses_oakland_raiders_venue(self) -> None:
+        rows = [{"sport": "NFL", "player_id": "00-0025552", "display_name": "Eric Frampton"}]
+        viz.attach_player_timelines(rows)
+        timeline = {section["key"]: section["items"] for section in rows[0]["timeline"]}
+        pro_labels = [item["label"] for item in timeline["pro"]]
+        self.assertIn("Oakland Raiders / McAfee Coliseum", pro_labels)
+        self.assertNotIn("Oakland Raiders", pro_labels)
+
+    @unittest.skipUnless(viz.DB_PATH.exists(), "local scratch database is not present")
+    def test_jethro_franklin_timeline_hides_school_and_adds_historical_venues(self) -> None:
+        rows = [{"sport": "NFL", "player_id": "FRA474588", "display_name": "Jethro Franklin"}]
+        viz.attach_player_timelines(rows)
+        timeline = {section["key"]: section["items"] for section in rows[0]["timeline"]}
+        self.assertNotIn("school", timeline)
+        pro_labels = [item["label"] for item in timeline["pro"]]
+        self.assertIn("Houston Oilers / Astrodome", pro_labels)
+        self.assertIn("Seattle Seahawks / Kingdome", pro_labels)
+        self.assertNotIn("Houston Oilers", pro_labels)
+        self.assertNotIn("Seattle Seahawks", pro_labels)
 
     @unittest.skipUnless(viz.DB_PATH.exists(), "local scratch database is not present")
     def test_struer_denmark_birthplace_query_finds_morten_andersen(self) -> None:

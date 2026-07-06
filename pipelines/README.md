@@ -17,6 +17,7 @@ python3 pipelines/ingest_mlb.py
 python3 pipelines/ingest_nfl.py
 python3 pipelines/ingest_nba.py
 python3 pipelines/ingest_nfl_stadiums.py
+python3 pipelines/build_pro_venue_stints.py
 python3 pipelines/enrich_wikidata_education.py --sports MLB,NFL,NBA --chunk-size 200 --max-chunks 0 --sleep-seconds 0.5
 python3 pipelines/enrich_wikidata_birthplace.py --sports NFL,NBA --chunk-size 200 --max-chunks 0 --sleep-seconds 0.5
 python3 pipelines/curate_high_schools.py --max-pages 0 --no-title-fallback
@@ -179,6 +180,21 @@ The audit writes `scratch/pro_year_coverage_audit.sqlite` and
 `scratch/pro_year_coverage_audit_summary.json`. It classifies missing-year rows
 as duplicate team rows with known years elsewhere, player-career-known but
 team-years-missing rows, or rows where both player and team years are missing.
+
+## Canonical Pro Venue Stints
+
+To rebuild the cross-sport team/venue/year cache:
+
+```bash
+python3 pipelines/build_pro_venue_stints.py
+```
+
+The cache writes `scratch/pro_venue_stints.sqlite` with one table of
+team-season venue rows and one table of compressed venue stints. It currently
+derives from Lahman MLB HomeGames, hoopR NBA schedule venues, and nflverse NFL
+schedule venues. It also applies the sourced overlay in
+`data/curation/pro_venue_stints.json` for conservative historical venue ranges
+where schedule-derived coverage is not available.
 
 ## Year Semantics
 
