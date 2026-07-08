@@ -10,10 +10,12 @@ from __future__ import annotations
 
 import gzip
 import hashlib
+import json
 import os
 import shutil
 import subprocess
 import sys
+import urllib.parse
 import urllib.request
 from pathlib import Path
 
@@ -52,6 +54,44 @@ def artifact_headers(url: str) -> dict[str, str]:
     return headers
 
 
+def github_api_headers() -> dict[str, str]:
+    headers = {
+        "User-Agent": "HometownHeroesRenderBuild/0.1",
+        "Accept": "application/vnd.github+json",
+    }
+    token = os.environ.get("HH_DB_ARTIFACT_TOKEN")
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    return headers
+
+
+def request_github_json(url: str) -> dict:
+    request = urllib.request.Request(url, headers=github_api_headers())
+    with urllib.request.urlopen(request, timeout=120) as response:
+        return json.loads(response.read().decode("utf-8"))
+
+
+def resolve_app_database_artifact_url() -> str:
+    url = os.environ.get("HH_DB_ARTIFACT_URL", "").strip()
+    if url:
+        return url
+
+    repo = os.environ.get("HH_DB_ARTIFACT_REPO", "").strip()
+    tag = os.environ.get("HH_DB_ARTIFACT_RELEASE_TAG", "").strip()
+    asset_name = os.environ.get("HH_DB_ARTIFACT_ASSET_NAME", APP_DB_ARTIFACT.name).strip()
+    if not repo or not tag:
+        return ""
+
+    encoded_tag = urllib.parse.quote(tag, safe="")
+    release_url = f"https://api.github.com/repos/{repo}/releases/tags/{encoded_tag}"
+    release = request_github_json(release_url)
+    for asset in release.get("assets", []):
+        if asset.get("name") == asset_name and asset.get("url"):
+            print(f"resolved release artifact {repo}@{tag}:{asset_name} to asset id {asset.get('id')}", flush=True)
+            return str(asset["url"])
+    raise RuntimeError(f"release asset not found: repo={repo} tag={tag} asset={asset_name}")
+
+
 def sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as f:
@@ -61,7 +101,7 @@ def sha256_file(path: Path) -> str:
 
 
 def hydrate_app_database_from_url() -> bool:
-    url = os.environ.get("HH_DB_ARTIFACT_URL", "").strip()
+    url = resolve_app_database_artifact_url()
     if not url:
         return False
 

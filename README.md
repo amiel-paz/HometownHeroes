@@ -32,20 +32,24 @@ metadata during the build instead of hydrating the cached artifact.
 
 For faster free-tier deploys, Render can hydrate a prebuilt SQLite database
 from a GitHub Release asset instead of running the data pipeline. Build locally,
-package the artifact, upload it to a release, then set these Render variables:
+package the artifact, and upload it to the stable `data-latest` release:
 
 ```bash
 python pipelines/build_database.py
 python pipelines/package_release_artifacts.py
+gh release upload data-latest scratch/release_artifacts/HometownHeroes.sqlite.gz --clobber
 ```
 
-- `HH_DB_ARTIFACT_URL`: URL for `HometownHeroes.sqlite.gz`.
-- `HH_DB_ARTIFACT_SHA256`: optional checksum from the packaging output.
-- `HH_DB_ARTIFACT_TOKEN`: optional GitHub token for private release assets.
+Render can resolve the current asset ID from a stable release tag and asset
+name, so future artifact uploads do not require changing environment variables:
 
-For private repositories, prefer the GitHub API release-asset URL
-`https://api.github.com/repos/OWNER/REPO/releases/assets/ASSET_ID` and a
-read-only token stored in Render as `HH_DB_ARTIFACT_TOKEN`. If
-`HH_DB_ARTIFACT_URL` is set, `pipelines/render_build.py` downloads and verifies
-the compressed database, skips the expensive ingest/enrichment steps, and
-starts the app from the hydrated SQLite file.
+- `HH_DB_ARTIFACT_REPO`: `amiel-paz/HometownHeroes`
+- `HH_DB_ARTIFACT_RELEASE_TAG`: `data-latest`
+- `HH_DB_ARTIFACT_ASSET_NAME`: `HometownHeroes.sqlite.gz`
+- `HH_DB_ARTIFACT_TOKEN`: GitHub read-only token for private release assets.
+- `HH_DB_ARTIFACT_SHA256`: optional fixed checksum; leave blank for a moving
+  `data-latest` artifact.
+
+If `HH_DB_ARTIFACT_URL` is set, it takes precedence over the tag/name resolver.
+That direct URL mode is useful for pinned historical releases, but it requires
+updating the URL when a new asset ID is created.

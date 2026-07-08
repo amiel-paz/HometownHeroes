@@ -149,13 +149,19 @@ class RenderDeployTests(unittest.TestCase):
             "--host 0.0.0.0 --port $PORT",
             "healthCheckPath: /api/status",
             "HH_DB_ARTIFACT_URL",
+            "HH_DB_ARTIFACT_REPO",
+            "HH_DB_ARTIFACT_RELEASE_TAG",
+            "HH_DB_ARTIFACT_ASSET_NAME",
             "HH_DB_ARTIFACT_TOKEN",
             "HH_DB_ARTIFACT_SHA256",
         ):
             self.assertIn(snippet, text)
         build_script = (ROOT / "pipelines" / "render_build.py").read_text(encoding="utf-8")
         self.assertIn("hydrate_app_database_from_url()", build_script)
+        self.assertIn("resolve_app_database_artifact_url()", build_script)
         self.assertIn("HH_DB_ARTIFACT_URL", build_script)
+        self.assertIn("HH_DB_ARTIFACT_RELEASE_TAG", build_script)
+        self.assertIn("HH_DB_ARTIFACT_ASSET_NAME", build_script)
         self.assertIn("HH_DB_ARTIFACT_TOKEN", build_script)
         self.assertIn("HH_DB_ARTIFACT_SHA256", build_script)
         self.assertIn("pipelines/enrich_nba_alltime_wikidata.py", build_script)

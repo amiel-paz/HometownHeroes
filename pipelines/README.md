@@ -38,18 +38,33 @@ python3 pipelines/package_release_artifacts.py
 ```
 
 The packer writes `scratch/release_artifacts/HometownHeroes.sqlite.gz`, a
-`.sha256` sidecar, and a small JSON manifest. Upload the `.gz` to a GitHub
-Release. On Render, set `HH_DB_ARTIFACT_URL` to the release asset URL and
-optionally set `HH_DB_ARTIFACT_SHA256` to the printed checksum. For a private
-repo, use a read-only GitHub token in `HH_DB_ARTIFACT_TOKEN`; the GitHub API
-asset URL form is the most reliable private-asset URL:
+`.sha256` sidecar, and a small JSON manifest. For the moving hosted artifact,
+upload the `.gz` to the stable `data-latest` release:
+
+```bash
+gh release upload data-latest scratch/release_artifacts/HometownHeroes.sqlite.gz --clobber
+```
+
+On Render, prefer stable release resolution instead of a specific asset ID:
+
+```text
+HH_DB_ARTIFACT_REPO=amiel-paz/HometownHeroes
+HH_DB_ARTIFACT_RELEASE_TAG=data-latest
+HH_DB_ARTIFACT_ASSET_NAME=HometownHeroes.sqlite.gz
+```
+
+For a private repo, use a read-only GitHub token in
+`HH_DB_ARTIFACT_TOKEN`. Leave `HH_DB_ARTIFACT_SHA256` blank for the moving
+`data-latest` artifact; set it only when pinning a specific immutable artifact.
+When the artifact environment variables are set, `pipelines/render_build.py`
+hydrates that database and skips the heavy ingest/enrichment commands.
+
+Direct URL mode is still supported with `HH_DB_ARTIFACT_URL`, and is best for
+pinned historical release assets:
 
 ```text
 https://api.github.com/repos/OWNER/REPO/releases/assets/ASSET_ID
 ```
-
-When `HH_DB_ARTIFACT_URL` is set, `pipelines/render_build.py` hydrates that
-database and skips the heavy ingest/enrichment commands.
 
 MLB birthplace geocoding uses the US Census Gazetteer for US places and
 GeoNames `cities500`, `admin1CodesASCII`, and `countryInfo` dumps for non-US

@@ -11,6 +11,12 @@ services:
         value: 3.11.9
       - key: HH_RENDER_SLEEP_SECONDS
         value: "0.2"
+      - key: HH_DB_ARTIFACT_REPO
+        value: amiel-paz/HometownHeroes
+      - key: HH_DB_ARTIFACT_RELEASE_TAG
+        value: data-latest
+      - key: HH_DB_ARTIFACT_ASSET_NAME
+        value: HometownHeroes.sqlite.gz
       - key: HH_DB_ARTIFACT_URL
         sync: false
       - key: HH_DB_ARTIFACT_TOKEN
