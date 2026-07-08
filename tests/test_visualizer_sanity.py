@@ -14,6 +14,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 VISUALIZER_PATH = ROOT / "scratch" / "pilot_visualizer_experiment.py"
 BIRTHPLACE_PIPELINE_PATH = ROOT / "pipelines" / "enrich_wikidata_birthplace.py"
+MEDIA_PIPELINE_PATH = ROOT / "pipelines" / "enrich_player_media.py"
 
 
 def load_visualizer():
@@ -36,6 +37,17 @@ def load_birthplace_pipeline():
 
 
 birthplace_pipeline = load_birthplace_pipeline()
+
+
+def load_media_pipeline():
+    spec = importlib.util.spec_from_file_location("enrich_player_media", MEDIA_PIPELINE_PATH)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+media_pipeline = load_media_pipeline()
 
 
 class VisualizerTaxonomyTests(unittest.TestCase):
@@ -87,6 +99,21 @@ class VisualizerTaxonomyTests(unittest.TestCase):
         self.assertEqual(viz.nfl_pastteam_label_from_line(line), "Las Vegas Outlaws")
         self.assertEqual(viz.extract_nfl_years(line), "2001")
 
+    def test_nhl_media_query_uses_nhlcom_wikidata_property(self) -> None:
+        query = media_pipeline.wikidata_media_query(
+            [
+                {
+                    "sport": "NHL",
+                    "source_player_id": "8447400",
+                    "wikidata_qid": "",
+                    "external_property": "P3522",
+                    "external_id": "8447400",
+                }
+            ]
+        )
+        self.assertIn("wdt:P3522", query)
+        self.assertIn("?nhl", query)
+
 
 class AttributionTests(unittest.TestCase):
     def test_public_attributions_are_linked_and_named(self) -> None:
@@ -134,6 +161,7 @@ class RenderDeployTests(unittest.TestCase):
         self.assertIn("pipelines/enrich_nba_alltime_wikidata.py", build_script)
         self.assertIn("pipelines/ingest_nhl.py", build_script)
         self.assertIn("HH_RENDER_INCLUDE_MEDIA", build_script)
+        self.assertIn("MLB,NFL,NBA,NHL", build_script)
         self.assertIn("pipelines/build_pro_venue_stints.py", build_script)
         self.assertIn("data\" / \"derived", build_script)
         self.assertIn("player_media.sqlite.gz", build_script)
@@ -191,6 +219,7 @@ class BirthplaceAuditTests(unittest.TestCase):
             "pipelines/ingest_nhl.py",
             "pipelines/package_release_artifacts.py",
             "pipelines/build_pro_venue_stints.py",
+            "pipelines/run_nhl_media.sh",
             "scratch/pro_year_coverage_audit.sqlite",
             "scratch/pro_venue_stints.sqlite",
             "data/curation/pro_venue_stints.json",
@@ -263,6 +292,36 @@ class OptionalDatabaseTests(unittest.TestCase):
         self.assertEqual(gretzky["final_year"], 1998)
         self.assertEqual(gretzky["label"], "Brantford, ON")
         self.assertIn(gretzky["country"], {"CAN", "Canada"})
+
+    @unittest.skipUnless(viz.DB_PATH.exists(), "local scratch database is not present")
+    def test_nhl_media_enrichment_has_reusable_thumbnails(self) -> None:
+        con = viz.connect()
+        try:
+            usable = con.execute(
+                """
+                select count(*)
+                from player_media
+                where sport = 'NHL'
+                  and usable = 1
+                  and thumbnail_url is not null
+                  and thumbnail_url != ''
+                """
+            ).fetchone()[0]
+            gretzky = con.execute(
+                """
+                select thumbnail_url, attribution_text, license
+                from player_media
+                where sport = 'NHL'
+                  and player_id = '8447400'
+                  and usable = 1
+                """
+            ).fetchone()
+        finally:
+            con.close()
+        self.assertGreaterEqual(usable, 6000)
+        self.assertIsNotNone(gretzky)
+        self.assertTrue(gretzky["thumbnail_url"].startswith("https://upload.wikimedia.org/"))
+        self.assertTrue(gretzky["license"])
 
     @unittest.skipUnless(viz.DB_PATH.exists(), "local scratch database is not present")
     def test_san_jose_college_query_uses_single_college_layer(self) -> None:

@@ -131,6 +131,22 @@ league such as the NBA, ABA, BAA, or NBL. Location coordinates prefer team
 headquarters/city over current arena coordinates to reduce historical
 anachronism.
 
+## NHL Media Runner
+
+After `python3 pipelines/ingest_nhl.py`, fetch reusable NHL player thumbnail
+metadata from Wikidata/Wikimedia Commons:
+
+```bash
+bash pipelines/run_nhl_media.sh
+```
+
+The runner uses NHL.com player IDs from `scratch/nhl_enrichment.sqlite` to
+match Wikidata `P3522`, fetches Commons license/thumbnail metadata for `P18`
+images, and rebuilds the unified SQLite database. It is resumable through raw
+caches under `data/raw/wikidata/media/` and
+`data/raw/wikimedia_commons/player_media/`. Set
+`INCLUDE_WIKIPEDIA_FALLBACK=1` for the slower Wikipedia page-image fallback.
+
 ## NHL Ingest
 
 To rebuild the NHL cache:

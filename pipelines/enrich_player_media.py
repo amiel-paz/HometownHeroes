@@ -34,6 +34,7 @@ CHADWICK_DATA = ROOT / "data/raw/mlb/chadwick-register-master/extracted/register
 NFL_PLAYERS_CSV = ROOT / "data/raw/nfl/nflverse-players-2026-06-24/players.csv"
 NBA_DB = SCRATCH / "nba_enrichment.sqlite"
 NBA_ALLTIME_DB = SCRATCH / "nba_alltime_wikidata.sqlite"
+NHL_DB = SCRATCH / "nhl_enrichment.sqlite"
 DB_PATH = SCRATCH / "player_media.sqlite"
 SUMMARY_PATH = SCRATCH / "player_media_summary.json"
 
@@ -200,6 +201,32 @@ def load_nba_alltime_bbr_ids() -> list[dict[str, str]]:
     return rows
 
 
+def load_nhl_ids() -> list[dict[str, str]]:
+    if not NHL_DB.exists():
+        log(f"NHL cache missing: {repo_path(NHL_DB)}")
+        return []
+    con = sqlite3.connect(NHL_DB)
+    rows = [
+        {
+            "sport": "NHL",
+            "source_player_id": str(row[0]),
+            "wikidata_qid": "",
+            "external_property": "P3522",
+            "external_id": str(row[0]),
+        }
+        for row in con.execute(
+            """
+            select player_id
+            from nhl_players
+            where player_id is not null and player_id != ''
+            order by player_id
+            """
+        ).fetchall()
+    ]
+    con.close()
+    return rows
+
+
 def load_source_rows(sports: set[str]) -> list[dict[str, str]]:
     rows: list[dict[str, str]] = []
     if "MLB" in sports:
@@ -209,6 +236,8 @@ def load_source_rows(sports: set[str]) -> list[dict[str, str]]:
     if "NBA" in sports:
         rows.extend(load_nba_espn_ids())
         rows.extend(load_nba_alltime_bbr_ids())
+    if "NHL" in sports:
+        rows.extend(load_nhl_ids())
     deduped = {
         (row["sport"], row["source_player_id"], row["external_property"], row["external_id"], row["wikidata_qid"]): row
         for row in rows
@@ -292,12 +321,14 @@ def wikidata_media_query(rows: list[dict[str, str]]) -> str:
     nfl_ids = sorted({row["external_id"] for row in rows if row["external_property"] == "P3561" and row["external_id"]})
     nba_ids = sorted({row["external_id"] for row in rows if row["external_property"] == "P3685" and row["external_id"]})
     nba_bbr_ids = sorted({row["external_id"] for row in rows if row["external_property"] == "P2685" and row["external_id"]})
+    nhl_ids = sorted({row["external_id"] for row in rows if row["external_property"] == "P3522" and row["external_id"]})
     qid_values = " ".join(f"wd:{qid}" for qid in qids) or "wd:Q0"
     nfl_values = " ".join(json.dumps(v) for v in nfl_ids) or '""'
     nba_values = " ".join(json.dumps(v) for v in nba_ids) or '""'
     nba_bbr_values = " ".join(json.dumps(v) for v in nba_bbr_ids) or '""'
+    nhl_values = " ".join(json.dumps(v) for v in nhl_ids) or '""'
     return f"""
-SELECT ?person ?personLabel ?image ?article ?pfr ?espn ?bbr WHERE {{
+SELECT ?person ?personLabel ?image ?article ?pfr ?espn ?bbr ?nhl WHERE {{
   {{
     VALUES ?person {{ {qid_values} }}
   }}
@@ -315,6 +346,11 @@ SELECT ?person ?personLabel ?image ?article ?pfr ?espn ?bbr WHERE {{
   {{
     VALUES ?bbr {{ {nba_bbr_values} }}
     ?person wdt:P2685 ?bbr .
+  }}
+  UNION
+  {{
+    VALUES ?nhl {{ {nhl_values} }}
+    ?person wdt:P3522 ?nhl .
   }}
   OPTIONAL {{ ?person wdt:P18 ?image . }}
   OPTIONAL {{
@@ -480,12 +516,15 @@ def process_wikidata_bindings(con: sqlite3.Connection, source_rows: list[dict[st
         pfr = binding.get("pfr", {}).get("value", "")
         espn = binding.get("espn", {}).get("value", "")
         bbr = binding.get("bbr", {}).get("value", "")
+        nhl = binding.get("nhl", {}).get("value", "")
         if not source and pfr:
             source = by_property.get(("P3561", pfr))
         if not source and espn:
             source = by_property.get(("P3685", espn))
         if not source and bbr:
             source = by_property.get(("P2685", bbr))
+        if not source and nhl:
+            source = by_property.get(("P3522", nhl))
         if not source:
             continue
         image = file_title(binding.get("image", {}).get("value"))
@@ -525,13 +564,14 @@ def fetch_wikidata_media(
 ) -> None:
     RAW_WIKIDATA.mkdir(parents=True, exist_ok=True)
     grouped = chunks(rows, chunk_size)
+    sport_group = "_".join(sorted({row["sport"] for row in rows})) if rows else "ALL"
     for chunk_index, chunk_rows in enumerate(grouped):
         if max_chunks is not None and chunk_index >= max_chunks:
             break
-        cache_path = RAW_WIKIDATA / f"wikidata_player_media_chunk_{chunk_index:05d}.json"
+        cache_path = RAW_WIKIDATA / f"wikidata_player_media_{sport_group.lower()}_chunk_{chunk_index:05d}.json"
         cached = con.execute(
-            "select status from wikidata_media_chunks where sport_group='ALL' and chunk_index=? and status='ok'",
-            (chunk_index,),
+            "select status from wikidata_media_chunks where sport_group=? and chunk_index=? and status='ok'",
+            (sport_group, chunk_index),
         ).fetchone()
         if cached and cache_path.exists():
             continue
@@ -547,9 +587,9 @@ def fetch_wikidata_media(
                 """
                 insert or replace into wikidata_media_chunks
                 (sport_group, chunk_index, cache_path, row_count, status)
-                values ('ALL', ?, ?, ?, 'ok')
+                values (?, ?, ?, ?, 'ok')
                 """,
-                (chunk_index, repo_path(cache_path), row_count),
+                (sport_group, chunk_index, repo_path(cache_path), row_count),
             )
             con.commit()
             log(f"  cached {row_count} media candidates")
@@ -558,9 +598,9 @@ def fetch_wikidata_media(
                 """
                 insert or replace into wikidata_media_chunks
                 (sport_group, chunk_index, cache_path, row_count, status)
-                values ('ALL', ?, ?, 0, ?)
+                values (?, ?, ?, 0, ?)
                 """,
-                (chunk_index, repo_path(cache_path), f"error:{type(exc).__name__}:{exc}"),
+                (sport_group, chunk_index, repo_path(cache_path), f"error:{type(exc).__name__}:{exc}"),
             )
             con.commit()
             log(f"  error: {type(exc).__name__}: {exc}")
@@ -770,7 +810,7 @@ def fetch_imageinfo_for_source(
     candidate_source = "wikidata_p18" if is_commons else "wikipedia_pageimage"
     sport_group = "_".join(sorted(sports)) if sports else "ALL"
     api_source_key = f"{api_source}:{sport_group}"
-    sport_filter = sorted(sports) if sports else ["MLB", "NBA", "NFL"]
+    sport_filter = sorted(sports) if sports else ["MLB", "NBA", "NFL", "NHL"]
     sport_placeholders = ",".join("?" for _ in sport_filter)
     rows = [
         dict(row)
@@ -903,9 +943,10 @@ def main() -> None:
     con.row_factory = sqlite3.Row
     rows = load_source_rows(sports)
     insert_source_rows(con, rows)
-    imported = import_nba_alltime_image_candidates(con)
-    if imported:
-        log(f"imported {imported} NBA all-time image candidates from {repo_path(NBA_ALLTIME_DB)}")
+    if "NBA" in sports:
+        imported = import_nba_alltime_image_candidates(con)
+        if imported:
+            log(f"imported {imported} NBA all-time image candidates from {repo_path(NBA_ALLTIME_DB)}")
     fetch_wikidata_media(
         con,
         rows,

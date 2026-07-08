@@ -230,7 +230,7 @@ def main() -> int:
                 PYTHON,
                 "pipelines/enrich_player_media.py",
                 "--sports",
-                "MLB,NFL,NBA",
+                "MLB,NFL,NBA,NHL",
                 "--chunk-size",
                 "200",
                 "--imageinfo-chunk-size",
