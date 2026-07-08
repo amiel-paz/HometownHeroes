@@ -9,10 +9,12 @@ start from the same reproducible pipeline used locally.
 from __future__ import annotations
 
 import gzip
+import hashlib
 import os
 import shutil
 import subprocess
 import sys
+import urllib.request
 from pathlib import Path
 
 
@@ -25,6 +27,7 @@ PLAYER_MEDIA_DB = SCRATCH / "player_media.sqlite"
 PLAYER_MEDIA_ARTIFACT = DERIVED / "player_media.sqlite.gz"
 BIRTH_AUDIT_FIXES_DB = SCRATCH / "birthplace_audit_fixes.sqlite"
 BIRTH_AUDIT_FIXES_ARTIFACT = DERIVED / "birthplace_audit_fixes.sqlite.gz"
+APP_DB_ARTIFACT = SCRATCH / "HometownHeroes.sqlite.gz"
 
 
 def env_flag(name: str, default: bool = False) -> bool:
@@ -37,6 +40,57 @@ def env_flag(name: str, default: bool = False) -> bool:
 def run(args: list[str]) -> None:
     print("+ " + " ".join(args), flush=True)
     subprocess.run(args, cwd=ROOT, check=True)
+
+
+def artifact_headers(url: str) -> dict[str, str]:
+    headers = {"User-Agent": "HometownHeroesRenderBuild/0.1"}
+    token = os.environ.get("HH_DB_ARTIFACT_TOKEN")
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    if "api.github.com" in url and "/releases/assets/" in url:
+        headers["Accept"] = "application/octet-stream"
+    return headers
+
+
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def hydrate_app_database_from_url() -> bool:
+    url = os.environ.get("HH_DB_ARTIFACT_URL", "").strip()
+    if not url:
+        return False
+
+    expected_sha256 = os.environ.get("HH_DB_ARTIFACT_SHA256", "").strip().lower()
+    APP_DB_ARTIFACT.parent.mkdir(parents=True, exist_ok=True)
+    tmp_gz = APP_DB_ARTIFACT.with_suffix(APP_DB_ARTIFACT.suffix + ".tmp")
+    tmp_db = APP_DB.with_suffix(APP_DB.suffix + ".tmp")
+
+    print(f"hydrating app database artifact from {url}", flush=True)
+    request = urllib.request.Request(url, headers=artifact_headers(url))
+    with urllib.request.urlopen(request, timeout=600) as response, tmp_gz.open("wb") as out:
+        shutil.copyfileobj(response, out)
+    tmp_gz.replace(APP_DB_ARTIFACT)
+
+    observed_sha256 = sha256_file(APP_DB_ARTIFACT)
+    print(f"downloaded app database artifact sha256={observed_sha256}", flush=True)
+    if expected_sha256 and observed_sha256 != expected_sha256:
+        raise RuntimeError(
+            "HH_DB_ARTIFACT_SHA256 mismatch: "
+            f"expected {expected_sha256}, observed {observed_sha256}"
+        )
+
+    APP_DB.parent.mkdir(parents=True, exist_ok=True)
+    with gzip.open(APP_DB_ARTIFACT, "rb") as source, tmp_db.open("wb") as target:
+        shutil.copyfileobj(source, target)
+    tmp_db.replace(APP_DB)
+    maybe_copy_database_to_runtime_path()
+    print(f"Render deploy database hydrated from artifact: {APP_DB}", flush=True)
+    return True
 
 
 def maybe_copy_database_to_runtime_path() -> None:
@@ -85,6 +139,8 @@ def hydrate_birthplace_audit_fixes_from_artifact() -> None:
 
 def main() -> int:
     SCRATCH.mkdir(exist_ok=True)
+    if hydrate_app_database_from_url():
+        return 0
     if env_flag("HH_RENDER_SKIP_DATA_BUILD"):
         print("HH_RENDER_SKIP_DATA_BUILD is set; skipping data build.", flush=True)
         return 0
@@ -95,6 +151,7 @@ def main() -> int:
         [PYTHON, "pipelines/ingest_mlb.py"],
         [PYTHON, "pipelines/ingest_nfl.py"],
         [PYTHON, "pipelines/ingest_nba.py"],
+        [PYTHON, "pipelines/ingest_nhl.py"],
         [PYTHON, "pipelines/ingest_nfl_stadiums.py", "--sleep-seconds", sleep_seconds],
         [PYTHON, "pipelines/build_pro_venue_stints.py"],
         [

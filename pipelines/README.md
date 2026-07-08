@@ -16,6 +16,7 @@ python3 -m pip install -e ".[notebook]"
 python3 pipelines/ingest_mlb.py
 python3 pipelines/ingest_nfl.py
 python3 pipelines/ingest_nba.py
+python3 pipelines/ingest_nhl.py
 python3 pipelines/ingest_nfl_stadiums.py
 python3 pipelines/build_pro_venue_stints.py
 python3 pipelines/enrich_wikidata_education.py --sports MLB,NFL,NBA --chunk-size 200 --max-chunks 0 --sleep-seconds 0.5
@@ -27,6 +28,28 @@ python3 pipelines/build_database.py
 ```
 
 Generated SQLite and CSV outputs are written under `scratch/`. Raw Wikidata, Wikipedia, and Wikimedia Commons responses are cached under `data/raw/` so interrupted runs can resume without refetching completed chunks.
+
+## GitHub Release Deploy Artifact
+
+After a local rebuild, package the app database for upload to GitHub Releases:
+
+```bash
+python3 pipelines/package_release_artifacts.py
+```
+
+The packer writes `scratch/release_artifacts/HometownHeroes.sqlite.gz`, a
+`.sha256` sidecar, and a small JSON manifest. Upload the `.gz` to a GitHub
+Release. On Render, set `HH_DB_ARTIFACT_URL` to the release asset URL and
+optionally set `HH_DB_ARTIFACT_SHA256` to the printed checksum. For a private
+repo, use a read-only GitHub token in `HH_DB_ARTIFACT_TOKEN`; the GitHub API
+asset URL form is the most reliable private-asset URL:
+
+```text
+https://api.github.com/repos/OWNER/REPO/releases/assets/ASSET_ID
+```
+
+When `HH_DB_ARTIFACT_URL` is set, `pipelines/render_build.py` hydrates that
+database and skips the heavy ingest/enrichment commands.
 
 MLB birthplace geocoding uses the US Census Gazetteer for US places and
 GeoNames `cities500`, `admin1CodesASCII`, and `countryInfo` dumps for non-US
@@ -107,6 +130,19 @@ These rows become `played_pro` events when Wikidata identifies a major pro
 league such as the NBA, ABA, BAA, or NBL. Location coordinates prefer team
 headquarters/city over current arena coordinates to reduce historical
 anachronism.
+
+## NHL Ingest
+
+To rebuild the NHL cache:
+
+```bash
+python3 pipelines/ingest_nhl.py
+```
+
+This caches NHL public Records API player bios and Hockey Hall of Fame flags,
+plus NHL Stats REST regular-season skater/goalie summaries for player/team
+seasons from 1959-60 onward. NHL pro geography currently resolves team city
+centroids rather than exact historical arena coordinates.
 
 ## Birthplace/Date Audit And Fixes
 
@@ -205,4 +241,5 @@ where schedule-derived coverage is not available.
 - Current NBA `played_pro` rows are derived from hoopR player/team season rows joined to schedule-derived home venue cities. Coordinates are city centroids for the venue city, not exact arena coordinates.
 - Current NBA `attended_high_school` and `attended_college` rows are Wikidata `P69` education associations. They mean attended/educated at, not confirmed sports participation.
 - Current NBA `all_star_count` and `all_pro_count` are parsed from Wikipedia infobox career highlights. For NBA, `all_pro_count` means All-NBA selections.
+- Current NHL `played_pro` rows are derived from NHL Stats REST player/team season summaries joined to team city centroids. Exact arena history is not yet modeled.
 - Player profile photos are discovered through Wikidata/Wikimedia metadata. Sports Reference-style IDs are used only for identity matching; photos are not downloaded from Sports Reference.

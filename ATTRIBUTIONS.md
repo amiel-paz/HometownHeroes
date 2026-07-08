@@ -16,6 +16,7 @@ datasets and media remain governed by their own licenses and terms.
 - Chadwick Bureau Register: https://github.com/chadwickbureau/register ; used for MLB identity resolution context.
 - nflverse data: https://github.com/nflverse/nflverse-data ; CC BY 4.0 snapshots used for NFL player, roster, team, and schedule-derived venue rows.
 - hoopR NBA data: https://github.com/sportsdataverse/hoopR-nba-data ; CC BY 4.0 snapshots used for NBA player/team seasons, schedules, rosters, and venue city context.
+- NHL public records and stats endpoints: https://records.nhl.com/ and https://api.nhle.com/stats/rest ; used for NHL player bios, Hockey Hall of Fame flags, and regular-season player/team summaries.
 
 ## Geography and Schools
 

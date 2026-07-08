@@ -141,7 +141,7 @@ DEFAULT_QUERY = {
     "pro_end_year": 2026,
     "birth_start_year": 1800,
     "birth_end_year": 2026,
-    "sports": ["MLB", "NFL", "NBA"],
+    "sports": ["MLB", "NFL", "NBA", "NHL"],
     "groups": [
         {"clauses": [{"kind": "birthplace"}]},
         {"clauses": [{"kind": "high_school"}]},
@@ -351,10 +351,11 @@ def normalize_query(payload: dict[str, Any]) -> dict[str, Any]:
         query["pro_start_year"], query["pro_end_year"] = query["pro_end_year"], query["pro_start_year"]
     if query["birth_start_year"] > query["birth_end_year"]:
         query["birth_start_year"], query["birth_end_year"] = query["birth_end_year"], query["birth_start_year"]
-    query["sports"] = [sport for sport in query.get("sports", []) if sport in {"MLB", "NFL", "NBA"}] or [
+    query["sports"] = [sport for sport in query.get("sports", []) if sport in {"MLB", "NFL", "NBA", "NHL"}] or [
         "MLB",
         "NFL",
         "NBA",
+        "NHL",
     ]
     query["sort"] = str(query.get("sort", "nearest"))
     query["hof_only"] = bool(query.get("hof_only", False))
@@ -554,6 +555,8 @@ def timeline_item_label(row: sqlite3.Row) -> str:
     source_key = row["source_key"] or ""
     parts = source_key.split("|")
     if row["sport"] == "NBA" and row["source"].startswith("Wikidata P54"):
+        return label
+    if row["sport"] == "NHL" and row["source"].startswith("NHL Stats REST"):
         return label
     if parts and parts[0]:
         team_name = parts[0].strip()
@@ -1126,8 +1129,9 @@ def build_response(query: dict[str, Any]) -> dict[str, Any]:
             "data_notes": [
                 "NFL pro rows are roster-season/home-stadium associations for 1999-current.",
                 "NBA pro rows are player/team seasons joined to schedule-derived venue city centroids.",
+                "NHL pro rows are player/team seasons joined to team city centroids.",
                 "MLB non-US birthplace coordinates use GeoNames cities500 centroids; GeoNames is licensed CC BY 4.0.",
-                "MLB All-Star and HOF fields come from Lahman; NFL and NBA HOF fields come from Wikidata; NFL Pro Bowl/All-Pro and NBA All-Star/All-NBA counts come from Wikipedia infobox career highlights.",
+                "MLB All-Star and HOF fields come from Lahman; NFL and NBA HOF fields come from Wikidata; NHL HOF fields come from NHL Records; NFL Pro Bowl/All-Pro and NBA All-Star/All-NBA counts come from Wikipedia infobox career highlights.",
             ],
         },
         "players": returned_players,
@@ -1901,6 +1905,7 @@ HTML = r"""
                 <label><input type="checkbox" id="sportMLB" checked> MLB</label>
                 <label><input type="checkbox" id="sportNFL" checked> NFL</label>
                 <label><input type="checkbox" id="sportNBA" checked> NBA</label>
+                <label><input type="checkbox" id="sportNHL" checked> NHL</label>
               </div>
             </section>
             <section class="filter-group" aria-label="Honor filters">
@@ -2078,7 +2083,8 @@ HTML = r"""
       if (document.getElementById('sportMLB').checked) sports.push('MLB');
       if (document.getElementById('sportNFL').checked) sports.push('NFL');
       if (document.getElementById('sportNBA').checked) sports.push('NBA');
-      return sports.length ? sports : ['MLB', 'NFL', 'NBA'];
+      if (document.getElementById('sportNHL').checked) sports.push('NHL');
+      return sports.length ? sports : ['MLB', 'NFL', 'NBA', 'NHL'];
     }
 
     function currentQuery() {

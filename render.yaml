@@ -11,3 +11,9 @@ services:
         value: 3.11.9
       - key: HH_RENDER_SLEEP_SECONDS
         value: "0.2"
+      - key: HH_DB_ARTIFACT_URL
+        sync: false
+      - key: HH_DB_ARTIFACT_TOKEN
+        sync: false
+      - key: HH_DB_ARTIFACT_SHA256
+        sync: false

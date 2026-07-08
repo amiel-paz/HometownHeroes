@@ -102,6 +102,7 @@ class AttributionTests(unittest.TestCase):
             "nflverse",
             "Lahman",
             "hoopR",
+            "NHL public records",
         ):
             self.assertIn(name, text)
 
@@ -120,10 +121,18 @@ class RenderDeployTests(unittest.TestCase):
             "python pipelines/render_build.py",
             "--host 0.0.0.0 --port $PORT",
             "healthCheckPath: /api/status",
+            "HH_DB_ARTIFACT_URL",
+            "HH_DB_ARTIFACT_TOKEN",
+            "HH_DB_ARTIFACT_SHA256",
         ):
             self.assertIn(snippet, text)
         build_script = (ROOT / "pipelines" / "render_build.py").read_text(encoding="utf-8")
+        self.assertIn("hydrate_app_database_from_url()", build_script)
+        self.assertIn("HH_DB_ARTIFACT_URL", build_script)
+        self.assertIn("HH_DB_ARTIFACT_TOKEN", build_script)
+        self.assertIn("HH_DB_ARTIFACT_SHA256", build_script)
         self.assertIn("pipelines/enrich_nba_alltime_wikidata.py", build_script)
+        self.assertIn("pipelines/ingest_nhl.py", build_script)
         self.assertIn("HH_RENDER_INCLUDE_MEDIA", build_script)
         self.assertIn("pipelines/build_pro_venue_stints.py", build_script)
         self.assertIn("data\" / \"derived", build_script)
@@ -179,6 +188,8 @@ class BirthplaceAuditTests(unittest.TestCase):
             "scratch/birthplace_conflict_review_candidates.json",
             "pipelines/apply_birthplace_audit_fixes.py",
             "pipelines/audit_pro_year_coverage.py",
+            "pipelines/ingest_nhl.py",
+            "pipelines/package_release_artifacts.py",
             "pipelines/build_pro_venue_stints.py",
             "scratch/pro_year_coverage_audit.sqlite",
             "scratch/pro_venue_stints.sqlite",
@@ -220,6 +231,39 @@ class RepositoryScrubTests(unittest.TestCase):
 
 
 class OptionalDatabaseTests(unittest.TestCase):
+    @unittest.skipUnless(viz.DB_PATH.exists(), "local scratch database is not present")
+    def test_nhl_is_available_in_query_and_finds_wayne_gretzky_birthplace(self) -> None:
+        normalized = viz.normalize_query({"sports": ["NHL"]})
+        self.assertEqual(normalized["sports"], ["NHL"])
+        self.assertIn('id="sportNHL"', viz.HTML)
+
+        con = viz.connect()
+        try:
+            nhl_players = con.execute("select count(*) from players where sport = 'NHL'").fetchone()[0]
+            gretzky = con.execute(
+                """
+                select p.player_id, p.display_name, p.debut_year, p.final_year, l.label, l.country
+                from players p
+                join geocoded_player_location_events e
+                  on e.sport = p.sport and e.player_id = p.player_id and e.event_type = 'born'
+                join locations l on l.location_id = e.location_id
+                where p.sport = 'NHL' and p.display_name = 'Wayne Gretzky'
+                """
+            ).fetchone()
+            nhl_pro = con.execute(
+                "select count(*) from pro_career_summary where sport = 'NHL'"
+            ).fetchone()[0]
+        finally:
+            con.close()
+
+        self.assertGreaterEqual(nhl_players, 23000)
+        self.assertGreaterEqual(nhl_pro, 7000)
+        self.assertIsNotNone(gretzky)
+        self.assertEqual(gretzky["debut_year"], 1979)
+        self.assertEqual(gretzky["final_year"], 1998)
+        self.assertEqual(gretzky["label"], "Brantford, ON")
+        self.assertIn(gretzky["country"], {"CAN", "Canada"})
+
     @unittest.skipUnless(viz.DB_PATH.exists(), "local scratch database is not present")
     def test_san_jose_college_query_uses_single_college_layer(self) -> None:
         query = viz.normalize_query(

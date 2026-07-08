@@ -24,6 +24,7 @@ SUMMARY = SCRATCH / "HometownHeroesSqlSummary.json"
 MLB_DB = SCRATCH / "mlb_enrichment.sqlite"
 NFL_DB = SCRATCH / "nfl_enrichment.sqlite"
 NBA_DB = SCRATCH / "nba_enrichment.sqlite"
+NHL_DB = SCRATCH / "nhl_enrichment.sqlite"
 NBA_ALLTIME_DB = SCRATCH / "nba_alltime_wikidata.sqlite"
 NBA_ALLTIME_PRO_TEAMS_DB = SCRATCH / "nba_alltime_pro_teams.sqlite"
 WIKIDATA_DB = SCRATCH / "wikidata_education_enrichment.sqlite"
@@ -190,6 +191,8 @@ def attach_sources(con: sqlite3.Connection) -> None:
     con.execute(f"attach database {sql_quote(str(NFL_DB))} as nfl")
     if NBA_DB.exists():
         con.execute(f"attach database {sql_quote(str(NBA_DB))} as nba")
+    if NHL_DB.exists():
+        con.execute(f"attach database {sql_quote(str(NHL_DB))} as nhl")
     if NBA_ALLTIME_DB.exists():
         con.execute(f"attach database {sql_quote(str(NBA_ALLTIME_DB))} as nba_alltime")
     if NBA_ALLTIME_PRO_TEAMS_DB.exists():
@@ -201,8 +204,26 @@ def attach_sources(con: sqlite3.Connection) -> None:
         con.execute(f"attach database {sql_quote(str(NFL_STADIUM_DB))} as ns")
     if HONORS_DB.exists():
         con.execute(f"attach database {sql_quote(str(HONORS_DB))} as honors")
-    if PLAYER_MEDIA_DB.exists():
-        con.execute(f"attach database {sql_quote(str(PLAYER_MEDIA_DB))} as media")
+
+
+def detach_source_databases(con: sqlite3.Connection) -> None:
+    con.commit()
+    for alias in (
+        "mlb",
+        "nfl",
+        "nba",
+        "nhl",
+        "nba_alltime",
+        "nba_pro_alltime",
+        "wd",
+        "wb",
+        "ns",
+        "honors",
+    ):
+        try:
+            con.execute(f"detach database {alias}")
+        except sqlite3.OperationalError:
+            pass
 
 
 def load_curated_birthplace_overrides() -> list[dict[str, object]]:
@@ -331,6 +352,15 @@ def prepare_nba_alltime_mapping(con: sqlite3.Connection) -> None:
             """
         )
     if PLAYER_MEDIA_DB.exists():
+        detached_nhl = False
+        if NHL_DB.exists():
+            con.commit()
+            try:
+                con.execute("detach database nhl")
+                detached_nhl = True
+            except sqlite3.OperationalError:
+                detached_nhl = False
+        con.execute(f"attach database {sql_quote(str(PLAYER_MEDIA_DB))} as media")
         con.executescript(
             """
             insert or ignore into nba_qid_current_ids
@@ -343,6 +373,10 @@ def prepare_nba_alltime_mapping(con: sqlite3.Connection) -> None:
               and source_player_id glob '[0-9]*';
             """
         )
+        con.commit()
+        con.execute("detach database media")
+        if detached_nhl:
+            con.execute(f"attach database {sql_quote(str(NHL_DB))} as nhl")
     con.executescript(
         """
         create temp table nba_alltime_player_map as
@@ -441,6 +475,25 @@ def load_players(con: sqlite3.Connection) -> None:
                 source
             from nba.nba_players
             where athlete_id is not null and athlete_id != '';
+            """
+        )
+    if NHL_DB.exists():
+        con.executescript(
+            """
+            insert or ignore into players
+            (sport, player_id, display_name, birth_date, birth_year, debut_year, final_year, primary_external_id, source)
+            select
+                'NHL',
+                player_id,
+                display_name,
+                nullif(birth_date, ''),
+                cast(substr(nullif(birth_date, ''), 1, 4) as integer),
+                cast(first_season as integer),
+                cast(last_season as integer),
+                player_id,
+                'NHL Records player + NHL Stats REST season summaries'
+            from nhl.nhl_players
+            where player_id is not null and player_id != '';
             """
         )
     if NBA_ALLTIME_DB.exists():
@@ -667,6 +720,50 @@ def load_locations(con: sqlite3.Connection) -> None:
                 venue_id || '|' || venue_full_name
             from nba.nba_venue_geocode_cache
             where venue_id is not null and venue_id != '';
+            """
+        )
+    if NHL_DB.exists():
+        con.executescript(
+            """
+            insert or replace into locations
+            (location_id, location_kind, label, city, state, country, latitude, longitude, geocode_status, geocode_source, source, source_key)
+            select
+                stable_id('NHL', 'birthplace', birth_city, birth_state, birth_country),
+                'birthplace',
+                case
+                    when birth_state is not null and birth_state != '' then birth_city || ', ' || birth_state
+                    else birth_city || ', ' || birth_country
+                end,
+                birth_city,
+                birth_state,
+                birth_country,
+                latitude,
+                longitude,
+                geocode_status,
+                geocode_source,
+                'NHL Records birthplace cache',
+                birth_city || '|' || coalesce(birth_state, '') || '|' || birth_country
+            from nhl.nhl_birthplace_geocode_cache
+            where birth_city is not null and birth_city != ''
+              and birth_country is not null and birth_country != '';
+
+            insert or replace into locations
+            (location_id, location_kind, label, city, state, country, latitude, longitude, geocode_status, geocode_source, source, source_key)
+            select
+                stable_id('NHL', 'pro_team', team_name),
+                'pro_team',
+                team_name,
+                city,
+                state,
+                country,
+                latitude,
+                longitude,
+                geocode_status,
+                geocode_source,
+                'NHL Stats REST team city cache',
+                team_abbrev || '|' || team_name
+            from nhl.nhl_team_geocode_cache
+            where team_name is not null and team_name != '';
             """
         )
     if WIKIDATA_BIRTHPLACE_DB.exists():
@@ -912,6 +1009,50 @@ def load_events(con: sqlite3.Connection) -> None:
             from nba.nba_pro_venue_events
             where athlete_id is not null and athlete_id != ''
               and venue_id is not null and venue_id != '';
+            """
+        )
+    if NHL_DB.exists():
+        con.executescript(
+            """
+            insert or replace into player_location_events
+            (event_id, sport, player_id, event_type, location_id, start_year, end_year, duration_years, source, source_key, confidence, notes)
+            select
+                stable_id('NHL', player_id, 'born', birth_city, birth_state, birth_country),
+                'NHL',
+                player_id,
+                'born',
+                stable_id('NHL', 'birthplace', birth_city, birth_state, birth_country),
+                cast(substr(nullif(birth_date, ''), 1, 4) as integer),
+                cast(substr(nullif(birth_date, ''), 1, 4) as integer),
+                null,
+                'NHL Records player',
+                player_id,
+                'source_reported',
+                null
+            from nhl.nhl_players
+            where player_id is not null and player_id != ''
+              and birth_city is not null and birth_city != ''
+              and birth_country is not null and birth_country != '';
+
+            insert or replace into player_location_events
+            (event_id, sport, player_id, event_type, location_id, start_year, end_year, duration_years, source, source_key, confidence, notes)
+            select
+                stable_id('NHL', player_id, 'played_pro', team_name),
+                'NHL',
+                player_id,
+                'played_pro',
+                stable_id('NHL', 'pro_team', team_name),
+                min(cast(season as integer)),
+                max(cast(season as integer)),
+                count(distinct cast(season as integer)),
+                'NHL Stats REST regular-season summaries',
+                team_name,
+                'player_team_season_reported',
+                'Player/team season association joined to the team city centroid; this is not exact venue history.'
+            from nhl.nhl_player_team_seasons
+            where player_id is not null and player_id != ''
+              and team_name is not null and team_name != ''
+            group by player_id, team_name;
             """
         )
     if WIKIDATA_BIRTHPLACE_DB.exists():
@@ -1161,29 +1302,52 @@ def apply_curated_birthplace_overrides(con: sqlite3.Connection) -> None:
 
 
 def load_honors(con: sqlite3.Connection) -> None:
-    if not HONORS_DB.exists():
-        return
-    con.executescript(
-        """
-        insert or replace into player_honor_summary
-        (sport, player_id, all_star_count, all_pro_count, hof_inducted, hof_year, honor_sources)
-        select
-            h.sport,
-            h.source_player_id,
-            h.all_star_count,
-            h.all_pro_count,
-            h.hof_inducted,
-            h.hof_year,
-            h.honor_sources
-        from honors.player_honor_summary h
-        join players p on p.sport = h.sport and p.player_id = h.source_player_id;
-        """
-    )
+    if HONORS_DB.exists():
+        con.executescript(
+            """
+            insert or replace into player_honor_summary
+            (sport, player_id, all_star_count, all_pro_count, hof_inducted, hof_year, honor_sources)
+            select
+                h.sport,
+                h.source_player_id,
+                h.all_star_count,
+                h.all_pro_count,
+                h.hof_inducted,
+                h.hof_year,
+                h.honor_sources
+            from honors.player_honor_summary h
+            join players p on p.sport = h.sport and p.player_id = h.source_player_id;
+            """
+        )
+    if NHL_DB.exists():
+        con.executescript(
+            """
+            insert or replace into player_honor_summary
+            (sport, player_id, all_star_count, all_pro_count, hof_inducted, hof_year, honor_sources)
+            select
+                'NHL',
+                n.player_id,
+                0,
+                0,
+                case
+                    when lower(coalesce(cast(n.in_hockey_hof as text), '')) in ('1', 'true', 't', 'yes') then 1
+                    when n.hof_induction_year is not null then 1
+                    else 0
+                end,
+                cast(n.hof_induction_year as integer),
+                'NHL Records player Hockey Hall of Fame fields'
+            from nhl.nhl_players n
+            join players p on p.sport = 'NHL' and p.player_id = n.player_id
+            where lower(coalesce(cast(n.in_hockey_hof as text), '')) in ('1', 'true', 't', 'yes')
+               or n.hof_induction_year is not null;
+            """
+        )
 
 
 def load_media(con: sqlite3.Connection) -> None:
     if not PLAYER_MEDIA_DB.exists():
         return
+    con.execute(f"attach database {sql_quote(str(PLAYER_MEDIA_DB))} as media")
     con.executescript(
         """
         insert or replace into player_media
@@ -1250,6 +1414,8 @@ def load_media(con: sqlite3.Connection) -> None:
             join players p on p.sport = 'NBA' and p.player_id = map.player_id;
             """
         )
+    con.commit()
+    con.execute("detach database media")
 
 
 def create_indexes_and_views(con: sqlite3.Connection) -> None:
@@ -1352,6 +1518,8 @@ def add_sources(con: sqlite3.Connection) -> None:
     ]
     if NBA_DB.exists():
         rows.append(("nba_enrichment", repo_path(NBA_DB), "NBA hoopR CC BY 4.0 player/team/venue cache"))
+    if NHL_DB.exists():
+        rows.append(("nhl_enrichment", repo_path(NHL_DB), "NHL public records/stats player, birthplace, and team-season cache"))
     if WIKIDATA_BIRTHPLACE_DB.exists():
         rows.append(("wikidata_birthplace", repo_path(WIKIDATA_BIRTHPLACE_DB), "Wikidata P19 birthplace cache"))
     if NFL_STADIUM_DB.exists():
@@ -1404,6 +1572,7 @@ def main() -> None:
     load_events(con)
     apply_curated_birthplace_overrides(con)
     load_honors(con)
+    detach_source_databases(con)
     load_media(con)
     create_indexes_and_views(con)
     add_sources(con)
