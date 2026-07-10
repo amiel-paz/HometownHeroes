@@ -1352,11 +1352,11 @@ def load_media(con: sqlite3.Connection) -> None:
         """
         insert or replace into player_media
         (sport, player_id, wikidata_qid, person_label, article_title, media_source, file_title,
-         thumbnail_url, original_url, source_page_url, author, credit, license, license_url,
+        thumbnail_url, original_url, source_page_url, author, credit, license, license_url,
          attribution_text, attribution_required, usable, rejection_reason, raw_cache_path, fetched_at)
         select
             m.sport,
-            m.source_player_id,
+            p.player_id,
             m.wikidata_qid,
             m.person_label,
             m.article_title,
@@ -1376,7 +1376,12 @@ def load_media(con: sqlite3.Connection) -> None:
             m.raw_cache_path,
             m.fetched_at
         from media.player_media m
-        join players p on p.sport = m.sport and p.player_id = m.source_player_id;
+        join players p
+          on p.sport = m.sport
+         and (
+             p.player_id = m.source_player_id
+             or p.primary_external_id = m.source_player_id
+         );
         """
     )
     if NBA_ALLTIME_DB.exists():

@@ -952,9 +952,72 @@ def attach_player_timelines(player_rows: list[dict[str, Any]]) -> None:
         row["timeline"] = sections
 
 
+def render_inline_markdown(value: str) -> str:
+    parts = re.split(r"(`[^`]*`)", value)
+    rendered: list[str] = []
+    for part in parts:
+        if part.startswith("`") and part.endswith("`"):
+            rendered.append(f"<code>{html_lib.escape(part[1:-1])}</code>")
+            continue
+        escaped = html_lib.escape(part)
+        escaped = re.sub(
+            r"(https?://[^\s<]+)",
+            lambda match: (
+                f'<a href="{html_lib.escape(match.group(1), quote=True)}" '
+                f'target="_blank" rel="noreferrer">{html_lib.escape(match.group(1))}</a>'
+            ),
+            escaped,
+        )
+        rendered.append(escaped)
+    return "".join(rendered)
+
+
+def render_markdown_fragment(text: str) -> str:
+    blocks: list[str] = []
+    list_items: list[str] = []
+    paragraph: list[str] = []
+
+    def flush_paragraph() -> None:
+        if paragraph:
+            blocks.append(f"<p>{render_inline_markdown(' '.join(paragraph))}</p>")
+            paragraph.clear()
+
+    def flush_list() -> None:
+        if list_items:
+            blocks.append("<ul>" + "".join(f"<li>{item}</li>" for item in list_items) + "</ul>")
+            list_items.clear()
+
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line:
+            flush_paragraph()
+            flush_list()
+            continue
+        if line.startswith("## "):
+            flush_paragraph()
+            flush_list()
+            blocks.append(f"<h2>{render_inline_markdown(line[3:].strip())}</h2>")
+            continue
+        if line.startswith("# "):
+            flush_paragraph()
+            flush_list()
+            blocks.append(f"<h1>{render_inline_markdown(line[2:].strip())}</h1>")
+            continue
+        if line.startswith("- "):
+            flush_paragraph()
+            list_items.append(render_inline_markdown(line[2:].strip()))
+            continue
+        flush_list()
+        paragraph.append(line)
+
+    flush_paragraph()
+    flush_list()
+    return "\n".join(blocks)
+
+
 def render_text_page(title: str, text: str) -> bytes:
     escaped_title = html_lib.escape(title)
-    escaped_text = html_lib.escape(text)
+    rendered_body = render_markdown_fragment(text)
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -977,17 +1040,38 @@ def render_text_page(title: str, text: str) -> bytes:
       border-radius: 8px;
       padding: 24px;
     }}
-    pre {{
-      white-space: pre-wrap;
-      font: inherit;
-      line-height: 1.5;
-      margin: 0;
+    h1 {{
+      margin: 0 0 24px;
+      font-size: 28px;
+      line-height: 1.15;
+    }}
+    h2 {{
+      margin: 32px 0 12px;
+      font-size: 18px;
+      line-height: 1.25;
+    }}
+    p, li {{
+      line-height: 1.55;
+    }}
+    p {{
+      margin: 0 0 16px;
+    }}
+    ul {{
+      margin: 0 0 18px;
+      padding-left: 22px;
+    }}
+    code {{
+      padding: 1px 5px;
+      border-radius: 5px;
+      background: #eef2f7;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.92em;
     }}
     a {{ color: #1663d6; }}
   </style>
 </head>
 <body>
-  <main><pre>{escaped_text}</pre></main>
+  <main>{rendered_body}</main>
 </body>
 </html>
 """.encode("utf-8")
@@ -1145,7 +1229,10 @@ HTML = r"""
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>HometownHeroes Pilot Visualizer</title>
+  <meta name="description" content="Geospatial sports analytics visualizer for athlete hometown, school, college, and professional-location associations.">
+  <meta name="theme-color" content="#f7f9fc">
+  <title>HometownHeroes Geospatial Sports Analytics</title>
+  <link rel="icon" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="12" fill="%231663d6"/><path d="M32 9l6.9 14 15.5 2.3-11.2 10.9 2.6 15.4L32 44.3 18.2 51.6l2.6-15.4L9.6 25.3 25.1 23z" fill="white"/></svg>'>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <style>
     :root {
@@ -1426,6 +1513,7 @@ HTML = r"""
       color: var(--muted);
       font-size: 11px;
       font-weight: 600;
+      overflow-wrap: anywhere;
     }
     .filter-row {
       display: grid;
@@ -1630,6 +1718,7 @@ HTML = r"""
     .player strong {
       font-size: 14px;
       line-height: 1.2;
+      overflow-wrap: anywhere;
     }
     .dist {
       font-size: 12px;
@@ -1684,6 +1773,7 @@ HTML = r"""
       color: var(--muted);
       font-size: 12px;
       line-height: 1.35;
+      overflow-wrap: anywhere;
     }
     .timeline-years {
       color: var(--ink);
@@ -2228,9 +2318,10 @@ HTML = r"""
 
     function playerMediaMarkup(player) {
       const media = player.media || {};
+      const initials = escapeHTML(initialsFor(player.display_name));
       const image = media.usable && media.thumbnail_url
-        ? `<img src="${escapeHTML(media.thumbnail_url)}" alt="${escapeHTML(player.display_name)}">`
-        : escapeHTML(initialsFor(player.display_name));
+        ? `<img src="${escapeHTML(media.thumbnail_url)}" alt="${escapeHTML(player.display_name)}" data-initials="${initials}">`
+        : initials;
       const creditParts = [];
       if (media.attribution) creditParts.push(escapeHTML(media.attribution));
       if (media.source_page_url) creditParts.push(`<a href="${escapeHTML(media.source_page_url)}" target="_blank" rel="noreferrer">source</a>`);
@@ -2243,6 +2334,16 @@ HTML = r"""
         image,
         credit: creditParts.length ? `<div class="small photo-credit">Photo: ${creditParts.join(' · ')}</div>` : ''
       };
+    }
+
+    function wireAvatarFallback(root) {
+      root.querySelectorAll('.avatar img').forEach(img => {
+        img.addEventListener('error', () => {
+          const avatar = img.closest('.avatar');
+          if (!avatar) return;
+          avatar.textContent = img.dataset.initials || '?';
+        }, { once: true });
+      });
     }
 
     function valueOrNA(value) {
@@ -2333,7 +2434,9 @@ HTML = r"""
       if (players.length === 0) {
         const empty = document.createElement('div');
         empty.className = 'empty';
-        empty.textContent = 'No players match this filtered view.';
+        empty.textContent = activeLocationFilter
+          ? 'No players match this map-point filter. Show all dots or broaden the query.'
+          : 'No players match this query. Try broadening the radius, years, sports, or location logic.';
         list.appendChild(empty);
         return;
       }
@@ -2373,6 +2476,7 @@ HTML = r"""
           const expanded = item.classList.toggle('expanded');
           item.setAttribute('aria-expanded', expanded ? 'true' : 'false');
         });
+        wireAvatarFallback(item);
         list.appendChild(item);
       });
     }

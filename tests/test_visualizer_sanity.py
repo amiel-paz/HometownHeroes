@@ -90,6 +90,15 @@ class VisualizerTaxonomyTests(unittest.TestCase):
         self.assertIn("runQuery({ collapseCompact: true })", viz.HTML)
         self.assertIn("options.collapseCompact === true", viz.HTML)
 
+    def test_public_page_has_portfolio_metadata_and_media_fallbacks(self) -> None:
+        self.assertIn("HometownHeroes Geospatial Sports Analytics", viz.HTML)
+        self.assertIn('name="description"', viz.HTML)
+        self.assertIn('rel="icon"', viz.HTML)
+        self.assertIn("function wireAvatarFallback(root)", viz.HTML)
+        self.assertIn("data-initials", viz.HTML)
+        self.assertIn("No players match this query.", viz.HTML)
+        self.assertIn("overflow-wrap: anywhere;", viz.HTML)
+
     def test_nfl_pfr_variants_include_uppercase_directory_prefix(self) -> None:
         self.assertEqual(birthplace_pipeline.pfr_variants("andermor01"), ["A/andermor01", "a/andermor01"])
         self.assertEqual(birthplace_pipeline.pfr_variants("a/andermor01"), ["A/andermor01", "a/andermor01"])
@@ -137,6 +146,19 @@ class AttributionTests(unittest.TestCase):
         page = viz.render_text_page("A < B", "credit: A & B < C").decode("utf-8")
         self.assertIn("A &lt; B", page)
         self.assertIn("A &amp; B &lt; C", page)
+
+    def test_attribution_page_renders_markdown_structure(self) -> None:
+        page = viz.render_text_page(
+            "Attributions",
+            "# Attributions\n\nText with `LICENSE`.\n\n## Map and UI\n\n- Leaflet: https://leafletjs.com/ ; BSD.",
+        ).decode("utf-8")
+        self.assertIn("<h1>Attributions</h1>", page)
+        self.assertIn("<h2>Map and UI</h2>", page)
+        self.assertIn("<code>LICENSE</code>", page)
+        self.assertIn("<ul><li>Leaflet:", page)
+        self.assertIn('<a href="https://leafletjs.com/"', page)
+        self.assertNotIn("# Attributions", page)
+        self.assertNotIn("- Leaflet", page)
 
 
 class RenderDeployTests(unittest.TestCase):
@@ -211,6 +233,29 @@ class RenderDeployTests(unittest.TestCase):
                 con.close()
         self.assertGreater(birthdate_overrides, 20000)
         self.assertGreaterEqual(birthplace_overrides, 0)
+
+
+class RecruiterFramingTests(unittest.TestCase):
+    def test_readme_frames_deployable_analytical_data_product(self) -> None:
+        text = (ROOT / "README.md").read_text(encoding="utf-8")
+        for snippet in (
+            "Live Demo",
+            "Project Summary",
+            "Technical Highlights",
+            "Data Pipeline",
+            "SQLite Warehouse",
+            "Geospatial Analytics / BI Layer",
+            "Data Quality and Attribution",
+            "Deployment",
+            "Limitations",
+            "Local Development",
+            "raw source snapshots",
+            "unified SQLite warehouse",
+            "map/query visualizer",
+            "82,434 athletes",
+            "python3 -m unittest discover -s tests",
+        ):
+            self.assertIn(snippet, text)
 
 
 class BirthplaceAuditTests(unittest.TestCase):
@@ -328,6 +373,28 @@ class OptionalDatabaseTests(unittest.TestCase):
         self.assertIsNotNone(gretzky)
         self.assertTrue(gretzky["thumbnail_url"].startswith("https://upload.wikimedia.org/"))
         self.assertTrue(gretzky["license"])
+
+    @unittest.skipUnless(viz.DB_PATH.exists(), "local scratch database is not present")
+    def test_mlb_media_joins_chadwick_bbref_ids_to_lahman_players(self) -> None:
+        con = viz.connect()
+        try:
+            cc = con.execute(
+                """
+                select p.player_id, p.primary_external_id, pm.thumbnail_url, pm.file_title, pm.license
+                from players p
+                left join player_media pm
+                  on pm.sport = p.sport and pm.player_id = p.player_id and pm.usable = 1
+                where p.sport = 'MLB'
+                  and p.player_id = 'sabatcc01'
+                """
+            ).fetchone()
+        finally:
+            con.close()
+        self.assertIsNotNone(cc)
+        self.assertEqual(cc["primary_external_id"], "sabatc.01")
+        self.assertEqual(cc["file_title"], "File:CCSabathia.jpg")
+        self.assertTrue(cc["thumbnail_url"].startswith("https://upload.wikimedia.org/"))
+        self.assertTrue(cc["license"])
 
     @unittest.skipUnless(viz.DB_PATH.exists(), "local scratch database is not present")
     def test_san_jose_college_query_uses_single_college_layer(self) -> None:
