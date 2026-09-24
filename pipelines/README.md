@@ -1,5 +1,10 @@
 # Data Pipelines
 
+For a current-source refresh and Render redeployment, follow
+[`docs/DATA_REFRESH.md`](../docs/DATA_REFRESH.md) and
+[`docs/RENDER_DEPLOY.md`](../docs/RENDER_DEPLOY.md). The commands below primarily
+rebuild cached snapshots; they do not guarantee upstream freshness.
+
 These scripts rebuild the local enrichment caches and unified SQLite database from the source snapshots under `data/raw`.
 
 ## Setup
@@ -21,6 +26,7 @@ python3 pipelines/ingest_nfl_stadiums.py
 python3 pipelines/build_pro_venue_stints.py
 python3 pipelines/enrich_wikidata_education.py --sports MLB,NFL,NBA --chunk-size 200 --max-chunks 0 --sleep-seconds 0.5
 python3 pipelines/enrich_wikidata_birthplace.py --sports NFL,NBA --chunk-size 200 --max-chunks 0 --sleep-seconds 0.5
+python3 pipelines/build_database.py
 python3 pipelines/curate_high_schools.py --max-pages 0 --no-title-fallback
 python3 pipelines/enrich_player_honors.py --sports MLB,NFL,NBA --include-wikipedia-nfl --include-wikipedia-nba --chunk-size 200 --wikipedia-chunk-size 50 --max-chunks 0 --max-wikipedia-chunks 0 --sleep-seconds 0.5
 python3 pipelines/enrich_player_media.py --sports MLB,NFL,NBA --chunk-size 200 --imageinfo-chunk-size 20 --max-chunks 0 --max-imageinfo-chunks 0 --sleep-seconds 6 --max-retries 20 --rate-limit-sleep 120 --skip-wikipedia-fallback
